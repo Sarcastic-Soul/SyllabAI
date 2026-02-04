@@ -1,235 +1,231 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { createSupabaseClient } from "@/lib/supabase";
+import { db } from "@/lib/db";
+import { companions, sessionHistory } from "@/lib/db/schema";
+import { eq, ilike, or, desc, and, count } from "drizzle-orm";
 
 // Create a new companion
 export const createCompanion = async (formData: CreateCompanion) => {
-    const { userId: author } = await auth();
-    const supabase = createSupabaseClient();
+  const { userId: author } = await auth();
 
-    const { data, error } = await supabase
-        .from("companions")
-        .insert({ ...formData, author })
-        .select();
+  if (!author) throw new Error("Unauthorized");
 
-    if (error || !data) throw new Error(error?.message || "Failed to create a companion");
+  const [data] = await db
+    .insert(companions)
+    .values({ ...formData, author })
+    .returning();
 
-    return data[0];
+  if (!data) throw new Error("Failed to create a companion");
+
+  return data;
 };
 
 // Fetch all companions with optional filters
 export const getAllCompanions = async ({
-    limit = 10,
-    page = 1,
-    subject,
-    topic,
+  limit = 10,
+  page = 1,
+  subject,
+  topic,
 }: GetAllCompanions) => {
-    await auth(); // Optional: for session validation
-    const supabase = createSupabaseClient();
+  await auth(); // Optional: for session validation
 
-    let query = supabase.from("companions").select();
+  const offset = (page - 1) * limit;
 
-    if (subject && topic) {
-        query = query
-            .ilike("subject", `%${subject}%`)
-            .or(`topic.ilike.%${topic}%,name.ilike.%${topic}%`);
-    } else if (subject) {
-        query = query.ilike("subject", `%${subject}%`);
-    } else if (topic) {
-        query = query.or(`topic.ilike.%${topic}%,name.ilike.%${topic}%`);
-    }
+  let whereClause = undefined;
 
-    query = query.range((page - 1) * limit, page * limit - 1);
+  if (subject && topic) {
+    whereClause = and(
+      ilike(companions.subject, `%${subject}%`),
+      or(
+        ilike(companions.topic, `%${topic}%`),
+        ilike(companions.name, `%${topic}%`),
+      ),
+    );
+  } else if (subject) {
+    whereClause = ilike(companions.subject, `%${subject}%`);
+  } else if (topic) {
+    whereClause = or(
+      ilike(companions.topic, `%${topic}%`),
+      ilike(companions.name, `%${topic}%`),
+    );
+  }
 
-    const { data: companions, error } = await query;
+  const data = await db
+    .select()
+    .from(companions)
+    .where(whereClause)
+    .limit(limit)
+    .offset(offset);
 
-    if (error) throw new Error(error.message);
-
-    return companions;
+  return data;
 };
 
 // Get a single companion by ID
 export const getCompanion = async (id: string) => {
-    const supabase = createSupabaseClient();
+  const [data] = await db
+    .select()
+    .from(companions)
+    .where(eq(companions.id, id));
 
-    const { data, error } = await supabase
-        .from("companions")
-        .select()
-        .eq("id", id);
+  if (!data) throw new Error("Companion not found");
 
-    if (error) throw new Error(error.message);
-
-    return data[0];
+  return data;
 };
 
 // Add companion to session history
 export const addToSessionHistory = async (companionId: string) => {
-    const { userId } = await auth();
-    const supabase = createSupabaseClient();
+  const { userId } = await auth();
 
-    const { data, error } = await supabase.from("session_history").insert({
-        companion_id: companionId,
-        user_id: userId,
-    });
+  if (!userId) throw new Error("Unauthorized");
 
-    if (error) throw new Error(error.message);
+  const [data] = await db
+    .insert(sessionHistory)
+    .values({
+      companionId: companionId,
+      userId: userId,
+    })
+    .returning();
 
-    return data;
+  if (!data) throw new Error("Failed to add to session history");
+
+  return data;
 };
 
 // Get recent global sessions
 export const getRecentSessions = async (limit = 10) => {
-    const supabase = createSupabaseClient();
+  const data = await db.query.sessionHistory.findMany({
+    with: {
+      companion: true,
+    },
+    orderBy: [desc(sessionHistory.createdAt)],
+    limit: limit * 3, // Fetch more to account for duplicates
+  });
 
-    const { data, error } = await supabase
-        .from("session_history")
-        .select(`companions:companion_id (*)`)
-        .order("created_at", { ascending: false })
-        .limit(limit * 3); // Fetch more to account for duplicates
+  // Remove duplicates based on companion id and limit the results
+  const uniqueCompanions = new Map();
 
-    if (error) throw new Error(error.message);
-
-    // Remove duplicates based on companion id and limit the results
-    const uniqueCompanions = new Map();
-
-    for (const session of data) {
-        const companion = session.companions as any;
-        if (companion && companion.id && !uniqueCompanions.has(companion.id)) {
-            uniqueCompanions.set(companion.id, companion);
-            if (uniqueCompanions.size >= limit) break;
-        }
+  for (const session of data) {
+    const companion = session.companion as any;
+    if (companion && companion.id && !uniqueCompanions.has(companion.id)) {
+      uniqueCompanions.set(companion.id, companion);
+      if (uniqueCompanions.size >= limit) break;
     }
+  }
 
-    return Array.from(uniqueCompanions.values());
+  return Array.from(uniqueCompanions.values());
 };
 
 // Get sessions of a specific user
 export const getUserSessions = async (userId: string, limit = 10) => {
-    const supabase = createSupabaseClient();
+  const data = await db.query.sessionHistory.findMany({
+    where: eq(sessionHistory.userId, userId),
+    with: {
+      companion: true,
+    },
+    orderBy: [desc(sessionHistory.createdAt)],
+    limit: limit * 3, // Fetch more to account for duplicates
+  });
 
-    const { data, error } = await supabase
-        .from("session_history")
-        .select(`companions:companion_id (*)`)
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(limit * 3); // Fetch more to account for duplicates
+  // Remove duplicates based on companion id and limit the results
+  const uniqueCompanions = new Map();
 
-    if (error) throw new Error(error.message);
-
-    // Remove duplicates based on companion id and limit the results
-    const uniqueCompanions = new Map();
-
-    for (const session of data) {
-        const companion = session.companions as any;
-        if (companion && companion.id && !uniqueCompanions.has(companion.id)) {
-            uniqueCompanions.set(companion.id, companion);
-            if (uniqueCompanions.size >= limit) break;
-        }
+  for (const session of data) {
+    const companion = session.companion as any;
+    if (companion && companion.id && !uniqueCompanions.has(companion.id)) {
+      uniqueCompanions.set(companion.id, companion);
+      if (uniqueCompanions.size >= limit) break;
     }
+  }
 
-    return Array.from(uniqueCompanions.values());
+  return Array.from(uniqueCompanions.values());
 };
 
 // Get companions created by the user
 export const getUserCompanions = async (userId: string) => {
-    const supabase = createSupabaseClient();
+  const data = await db
+    .select()
+    .from(companions)
+    .where(eq(companions.author, userId));
 
-    const { data, error } = await supabase
-        .from("companions")
-        .select()
-        .eq("author", userId);
-
-    if (error) throw new Error(error.message);
-
-    return data;
+  return data;
 };
 
 // Check if user is allowed to create a new companion
 export const newCompanionPermissions = async () => {
-    const { userId, has } = await auth();
-    const supabase = createSupabaseClient();
+  const { userId, has } = await auth();
 
-    let limit = 0;
+  if (!userId) return false;
 
-    if (has({ plan: "pro" })) {
-        return true;
-    } else if (has({ feature: "3_companion_limit" })) {
-        limit = 3;
-    } else if (has({ feature: "10_companion_limit" })) {
-        limit = 10;
-    }
+  let limit = 0;
 
-    const { data, error } = await supabase
-        .from("companions")
-        .select("id", { count: "exact" })
-        .eq("author", userId);
+  if (has({ plan: "pro" })) {
+    return true;
+  } else if (has({ feature: "3_companion_limit" })) {
+    limit = 3;
+  } else if (has({ feature: "10_companion_limit" })) {
+    limit = 10;
+  }
 
-    if (error) throw new Error(error.message);
+  const [companionCount] = await db
+    .select({ count: count() })
+    .from(companions)
+    .where(eq(companions.author, userId));
 
-    return data.length < limit;
+  return companionCount.count < limit;
 };
 
 // Toggle bookmark status (set isBookmarked to true/false)
-export const toggleBookmark = async (companionId: string, isBookmarked: boolean) => {
-    const { userId } = await auth();
-    if (!userId) throw new Error("Not authenticated");
+export const toggleBookmark = async (
+  companionId: string,
+  isBookmarked: boolean,
+) => {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Not authenticated");
 
-    const supabase = createSupabaseClient();
-
-    const { error } = await supabase
-        .from("companions")
-        .update({ isBookmarked })
-        .eq("id", companionId)
-        .eq("author", userId); // Optional: Only let authors update their own companions' bookmark status
-
-    if (error) throw new Error(error.message);
+  await db
+    .update(companions)
+    .set({ isBookmarked })
+    .where(and(eq(companions.id, companionId), eq(companions.author, userId)));
 };
 
 export const getBookmarkedCompanions = async (userId: string) => {
-    if (!userId) return [];
+  if (!userId) return [];
 
-    const supabase = createSupabaseClient();
-
-    const { data, error } = await supabase
-        .from('companions')
-        .select('*')
-        .eq('author', userId)
-        .eq('isBookmarked', true);
-
-    if (error) {
-        console.error('Error fetching bookmarked companions:', error.message);
-        return [];
-    }
+  try {
+    const data = await db
+      .select()
+      .from(companions)
+      .where(
+        and(eq(companions.author, userId), eq(companions.isBookmarked, true)),
+      );
 
     return data;
+  } catch (error: any) {
+    console.error("Error fetching bookmarked companions:", error.message);
+    return [];
+  }
 };
 
 // Delete a companion (only by the author)
 export const deleteCompanion = async (companionId: string) => {
-    const { userId } = await auth();
-    if (!userId) throw new Error("Not authenticated");
+  const { userId } = await auth();
+  if (!userId) throw new Error("Not authenticated");
 
-    const supabase = createSupabaseClient();
+  // First, verify that the user is the author of the companion
+  const [companion] = await db
+    .select({ author: companions.author })
+    .from(companions)
+    .where(eq(companions.id, companionId));
 
-    // First, verify that the user is the author of the companion
-    const { data: companion, error: fetchError } = await supabase
-        .from("companions")
-        .select("author")
-        .eq("id", companionId)
-        .single();
+  if (!companion) throw new Error("Companion not found");
+  if (companion.author !== userId)
+    throw new Error("Not authorized to delete this companion");
 
-    if (fetchError) throw new Error("Companion not found");
-    if (companion.author !== userId) throw new Error("Not authorized to delete this companion");
+  // Delete the companion (this will cascade delete session_history due to foreign key constraint defined in DB)
+  await db
+    .delete(companions)
+    .where(and(eq(companions.id, companionId), eq(companions.author, userId)));
 
-    // Delete the companion (this will cascade delete session_history due to foreign key constraint)
-    const { error: deleteError } = await supabase
-        .from("companions")
-        .delete()
-        .eq("id", companionId)
-        .eq("author", userId);
-
-    if (deleteError) throw new Error(deleteError.message);
-
-    return { success: true };
+  return { success: true };
 };

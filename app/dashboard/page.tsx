@@ -1,17 +1,24 @@
 import CompanionCard from "@/components/CompanionCard";
 import CompanionsList from "@/components/CompanionsList";
 import CTA from "@/components/CTA";
-import { getAllCompanions, getRecentSessions } from "@/lib/actions/companion.actions";
-import { syncUserToSupabase } from "@/lib/actions/syncUser";
+import {
+  getAllCompanions,
+  getRecentSessions,
+} from "@/lib/actions/companion.actions";
+import { syncUserToDatabase } from "@/lib/actions/syncUser";
 import { getSubjectColor } from "@/lib/utils";
 
 const Page = async () => {
-  await syncUserToSupabase();
+  await syncUserToDatabase();
   const companions = await getAllCompanions({ limit: 3 });
   const recentSessionsCompanions = await getRecentSessions(10);
 
-  const validCompanions = companions?.filter(companion => companion && companion.id) || [];
-  const validRecentSessions = recentSessionsCompanions?.filter(companion => companion && companion.id) || [];
+  const validCompanions =
+    companions?.filter((companion) => companion && companion.id) || [];
+  const validRecentSessions =
+    recentSessionsCompanions?.filter(
+      (companion) => companion && companion.id,
+    ) || [];
 
   return (
     <>
@@ -21,14 +28,11 @@ const Page = async () => {
         <section className="home-section">
           {validCompanions.map((companion) => (
             <CompanionCard
-              isBookmarked={companion.isBookmarked}
               key={companion.id}
               {...companion}
               color={getSubjectColor(companion.subject)}
-              
             />
           ))}
-
         </section>
 
         <section className="home-section">
@@ -41,7 +45,7 @@ const Page = async () => {
         </section>
       </main>
     </>
-  )
-}
+  );
+};
 
-export default Page
+export default Page;

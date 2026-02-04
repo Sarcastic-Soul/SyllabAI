@@ -6,9 +6,6 @@ A modern Learning Management System that leverages voice interaction and AI to c
 
 ## 🚀 Features
 
-### 🎯 Core Function 🤖 Automated Database Management
-
-This project includes a simple GitHub Actions workflow that automatically pings your deployed application every 3 days to keep the Supabase database active (prevents free tier from pausing due to inactivity).lity
 - **Voice-Based Learning**: Learn through natural conversation using speech recognition and synthesis
 - **AI Tutoring**: Personalized AI companions powered by Google Gemini Flash 1.5
 - **Multiple Subjects**: Mathematics, Science, Language, History, Coding, Economics, and more
@@ -42,7 +39,8 @@ This project includes a simple GitHub Actions workflow that automatically pings 
 - **React Hook Form** - Form management with Zod validation
 
 ### Backend & Database
-- **Supabase** - PostgreSQL database and real-time features
+- **NeonDB** - Serverless PostgreSQL database
+- **Drizzle ORM** - TypeScript ORM for type-safe database access
 - **Server Actions** - Next.js server-side data handling
 - **Database Tables**:
   - `companions` - AI tutor configurations
@@ -73,7 +71,7 @@ This project includes a simple GitHub Actions workflow that automatically pings 
 - **Modern Browser** (Chrome, Edge, Safari recommended)
 - **Microphone** access for voice features
 - **Google AI API Key**
-- **Supabase Account**
+- **NeonDB Account**
 - **Clerk Account**
 
 ## 🚀 Quick Start
@@ -96,10 +94,8 @@ Create a `.env.local` file in the root directory:
 # Google AI Services
 NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
 
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+# NeonDB Configuration
+DATABASE_URL=your_neondb_connection_string
 
 # Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
@@ -110,35 +106,12 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
 ```
 
-### 4. Database Setup (Supabase)
+### 4. Database Setup (NeonDB + Drizzle)
 
-Create the following tables in your Supabase database:
+Push the database schema to your NeonDB instance:
 
-#### Companions Table
-```sql
-CREATE TABLE companions (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  subject TEXT NOT NULL,
-  topic TEXT NOT NULL,
-  voice TEXT NOT NULL,
-  style TEXT NOT NULL,
-  duration INTEGER NOT NULL,
-  author TEXT NOT NULL,
-  isBookmarked BOOLEAN DEFAULT false,
-  created_at TIMESTAMP DEFAULT now(),
-  updated_at TIMESTAMP DEFAULT now()
-);
-```
-
-#### Session History Table
-```sql
-CREATE TABLE session_history (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  companion_id UUID REFERENCES companions(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT now()
-);
+```bash
+pnpm db:push
 ```
 
 ### 5. Authentication Setup (Clerk)
@@ -154,16 +127,7 @@ CREATE TABLE session_history (
 2. Create a new API key
 3. Add it to `NEXT_PUBLIC_GEMINI_API_KEY`
 
-### 6. GitHub Secrets (for Database Keep-Alive)
-
-Add this secret to your GitHub repository for the automated database ping workflow:
-
-1. Go to your GitHub repository settings
-2. Navigate to Secrets and Variables → Actions
-3. Add the following secret:
-   - `WEBSITE_URL`: Your deployed application URL (e.g., `https://your-app.vercel.app`)
-
-### 7. Run Development Server
+### 6. Run Development Server
 ```bash
 pnpm dev
 ```
@@ -187,9 +151,9 @@ Voice-LMS/
 │   └── CompanionComponent.tsx # Main voice interaction
 ├── lib/                   # Utility libraries
 │   ├── actions/          # Server actions
+│   ├── db/               # Database configuration and schema
 │   ├── hooks/            # Custom React hooks
 │   ├── services/         # AI and voice services
-│   ├── supabase.ts       # Database client
 │   └── utils.ts          # Helper functions
 ├── types/                # TypeScript definitions
 ├── constants/            # App constants and data
@@ -287,39 +251,7 @@ pnpm build
 pnpm start
 ```
 
-## � Automated Database Management
 
-This project includes a GitHub Actions workflow that automatically pings the Supabase database every 3 days to prevent it from pausing due to inactivity (common with Supabase free tier).
-
-### How It Works
-- **Simple HTTP Requests**: Just pings your deployed website URL
-- **Scheduled Execution**: Runs every 3 days at 12:00 UTC
-- **Manual Trigger**: Can be manually triggered from GitHub Actions tab
-- **Fallback Logic**: Tries homepage first, then API endpoints if needed
-- **No Dependencies**: Uses only built-in curl commands
-
-### Setup Requirements
-1. Add your deployed website URL to GitHub repository secrets:
-   - `WEBSITE_URL` (e.g., `https://your-app.vercel.app`)
-2. Ensure GitHub Actions are enabled for your repository
-3. The workflow will automatically start running on the scheduled interval
-
-### Manual Execution
-To manually trigger the database ping:
-
-**Via GitHub Actions:**
-1. Go to your repository's "Actions" tab
-2. Select "Keep Database Active" workflow
-3. Click "Run workflow" → "Run workflow"
-
-**Via Local Script:**
-```bash
-# Using environment variable
-WEBSITE_URL=https://your-app.vercel.app pnpm run ping-db
-
-# Using command line argument
-pnpm run ping-db https://your-app.vercel.app
-```
 
 ## �🤝 Contributing
 
@@ -343,7 +275,7 @@ This project is licensed under the MIT License.
 ## 🙏 Acknowledgments
 
 - **Google Gemini** for advanced AI capabilities
-- **Supabase** for reliable database and real-time features
+- **NeonDB** for reliable serverless database
 - **Clerk** for seamless authentication
 - **Vercel** for excellent deployment platform
 - **Radix UI** for accessible component library

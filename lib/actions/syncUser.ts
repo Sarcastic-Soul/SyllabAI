@@ -1,28 +1,29 @@
-'use server';
+"use server";
 
-import { currentUser } from '@clerk/nextjs/server';
-import { createClient } from '@supabase/supabase-js';
+import { currentUser } from "@clerk/nextjs/server";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const syncUserToDatabase = async () => {
+  const user = await currentUser();
 
-export const syncUserToSupabase = async () => {
-    const user = await currentUser();
+  if (!user) return;
 
-    if (!user) return;
+  const email = user.emailAddresses?.[0]?.emailAddress;
+  const id = user.id;
 
-    const email = user.emailAddresses?.[0]?.emailAddress;
-    const id = user.id;
-
-    // Upsert to avoid duplicates
-    const { error } = await supabase.from('users').upsert({
+  try {
+    await db
+      .insert(users)
+      .values({
         id,
         email,
-    });
-
-    if (error) {
-        console.error('Error syncing user to Supabase:', error.message);
-    }
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: { email },
+      });
+  } catch (error: any) {
+    console.error("Error syncing user to database:", error.message);
+  }
 };
