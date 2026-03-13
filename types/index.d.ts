@@ -1,9 +1,27 @@
-// type User = {
-//   name: string;
-//   email: string;
-//   image?: string;
-//   accountId: string;
-// };
+type Course = {
+  id: string;
+  topic: string;
+  duration: number;
+  difficulty: string;
+  author: string;
+  isCompleted: boolean;
+  createdAt: string;
+};
+
+type Chapter = {
+  id: string;
+  courseId: string;
+  title: string;
+  content: string;
+  order: number;
+  isCompleted: boolean;
+};
+
+interface CreateCourse {
+  topic: string;
+  duration: number;
+  difficulty: string;
+}
 
 type Companion = {
   id: string;
