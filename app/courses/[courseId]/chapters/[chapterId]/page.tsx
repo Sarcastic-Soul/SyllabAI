@@ -92,7 +92,14 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
           )}
         </div>
         <h1 className="text-4xl font-bold">{chapter.title}</h1>
-        <p className="text-lg text-muted-foreground">{chapter.content}</p>
+        <div className="text-lg text-muted-foreground">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
+            {chapter.content}
+          </ReactMarkdown>
+        </div>
       </div>
 
       <div className="min-h-[300px]">
@@ -105,17 +112,17 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
                 code({ node, inline, className, children, ...props }: any) {
                   const match = /language-(\w+)/.exec(className || "");
                   const codeStr = String(children).replace(/\n$/, "");
-  
+
                   // Intercept Mermaid blocks
                   if (!inline && match && match[1] === "mermaid") {
                     return <MermaidDiagram code={codeStr} />;
                   }
-  
+
                   // Intercept React Live blocks
                   if (!inline && match && match[1] === "react-live") {
                     return <ReactSandbox code={codeStr} />;
                   }
-  
+
                   // Standard code blocks
                   return (
                     <code className={className} {...props}>

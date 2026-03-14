@@ -1,21 +1,10 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { generateCourse } from "@/lib/actions/course.actions";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,112 +12,236 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Spinner } from "@/components/ui/spinner"; // Import shadcn spinner
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  generateCourse,
+  generateCourseFromPDF,
+} from "@/lib/actions/course.actions";
+import { Loader2, FileText, Sparkles, AlertCircle } from "lucide-react";
 
-const formSchema = z.object({
-  topic: z.string().min(5, { message: "Topic must be at least 5 characters." }),
-  duration: z.coerce.number().min(1).max(50),
-  difficulty: z.enum(["beginner", "intermediate", "advanced"], {
-    required_error: "Please select a difficulty level.",
-  }),
-});
-
-const CourseForm = () => {
+export default function CourseForm() {
   const router = useRouter();
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { topic: "", duration: 4, difficulty: "beginner" },
-  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  // Topic State
+  const [topic, setTopic] = useState("");
+  const [duration, setDuration] = useState("5");
+  const [difficulty, setDifficulty] = useState("Beginner");
+
+  // PDF State
+  const [file, setFile] = useState<File | null>(null);
+
+  const handleTopicSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
     try {
-      const course = await generateCourse(values);
-      if (course) router.push(`/courses/${course.id}`);
-    } catch (error) {
-      console.error("Failed to create course", error);
+      const newCourse = await generateCourse({
+        topic,
+        duration: parseInt(duration),
+        difficulty,
+      });
+      router.push(`/courses/${newCourse.id}`);
+    } catch (err: any) {
+      setError("Failed to generate course. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  const handlePDFSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("duration", duration);
+      formData.append("difficulty", difficulty);
+
+      const newCourseId = await generateCourseFromPDF(formData);
+      router.push(`/courses/${newCourseId}`);
+    } catch (err: any) {
+      setError(err.message || "Failed to process PDF.");
+      setLoading(false);
     }
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="topic"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>What do you want to learn?</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Ex: Fundamentals of Python Programming..."
-                  {...field}
-                  className="input"
+    <div className="w-full">
+      <Tabs defaultValue="topic" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsTrigger value="topic" className="text-base">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Any Topic
+          </TabsTrigger>
+          <TabsTrigger value="pdf" className="text-base">
+            <FileText className="w-4 h-4 mr-2" />
+            From PDF Document
+          </TabsTrigger>
+        </TabsList>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 flex items-start text-sm">
+            <AlertCircle className="w-5 h-5 mr-2 shrink-0 mt-0.5" />
+            <p>{error}</p>
+          </div>
+        )}
+
+        {/* --- TAB 1: GENERATE FROM TOPIC --- */}
+        <TabsContent value="topic">
+          <form onSubmit={handleTopicSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="topic">What do you want to learn?</Label>
+              <Input
+                id="topic"
+                placeholder="e.g. Advanced React Patterns, Introduction to Astrophysics..."
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </div>
+
+            {/* ... (Include your existing Select fields for duration and difficulty here) ... */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Difficulty</Label>
+                <Select
+                  value={difficulty}
+                  onValueChange={setDifficulty}
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Beginner">Beginner</SelectItem>
+                    <SelectItem value="Intermediate">Intermediate</SelectItem>
+                    <SelectItem value="Advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Chapters</Label>
+                <Select
+                  value={duration}
+                  onValueChange={setDuration}
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3 Chapters</SelectItem>
+                    <SelectItem value="5">5 Chapters</SelectItem>
+                    <SelectItem value="7">7 Chapters</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              disabled={loading || !topic}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Building
+                  Course...
+                </>
+              ) : (
+                "Generate Course"
+              )}
+            </Button>
+          </form>
+        </TabsContent>
+
+        {/* --- TAB 2: GENERATE FROM PDF --- */}
+        <TabsContent value="pdf">
+          <form onSubmit={handlePDFSubmit} className="space-y-6">
+            <div className="space-y-3">
+              <Label htmlFor="pdf-upload">Upload Course Material</Label>
+              <div className="border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center bg-muted/20 hover:bg-muted/40 transition-colors">
+                <FileText className="w-8 h-8 text-muted-foreground mb-4" />
+                <Input
+                  id="pdf-upload"
+                  type="file"
+                  accept=".pdf"
+                  className="max-w-xs cursor-pointer"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  required
+                  disabled={loading}
                 />
-              </FormControl>
-              <FormDescription>Be as specific as you'd like!</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="difficulty"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Difficulty Level</FormLabel>
-                <FormControl>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    defaultValue={field.value}
-                  >
-                    <SelectTrigger className="input capitalize">
-                      <SelectValue placeholder="Select difficulty" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="duration"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Number of Chapters / Modules</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="4"
-                    {...field}
-                    className="input"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <Button
-          type="submit"
-          className="w-full cursor-pointer"
-          disabled={form.formState.isSubmitting}
-        >
-          {form.formState.isSubmitting && <Spinner className="mr-2 h-4 w-4" />}
-          {form.formState.isSubmitting
-            ? "Generating AI Course..."
-            : "Generate Course Outline"}
-        </Button>
-      </form>
-    </Form>
+                <p className="mt-4 text-xs text-muted-foreground max-w-sm">
+                  <strong className="text-foreground">Important:</strong> Please
+                  upload text-based PDFs. Scanned images or PDFs without
+                  selectable text cannot be processed by the AI.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Difficulty</Label>
+                <Select
+                  value={difficulty}
+                  onValueChange={setDifficulty}
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Beginner">Beginner</SelectItem>
+                    <SelectItem value="Intermediate">Intermediate</SelectItem>
+                    <SelectItem value="Advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Chapters</Label>
+                <Select
+                  value={duration}
+                  onValueChange={setDuration}
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3 Chapters</SelectItem>
+                    <SelectItem value="5">5 Chapters</SelectItem>
+                    <SelectItem value="7">7 Chapters</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              disabled={loading || !file}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Reading &
+                  Building...
+                </>
+              ) : (
+                "Generate from Document"
+              )}
+            </Button>
+          </form>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
-};
-export default CourseForm;
+}
