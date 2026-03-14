@@ -47,7 +47,9 @@ async function saveCourseToDatabase(params: {
     isCompleted: false,
   }));
 
-  await db.insert(chapters).values(chaptersToInsert);
+  if (chaptersToInsert.length > 0) {
+    await db.insert(chapters).values(chaptersToInsert);
+  }
 
   // 3. Increment the user's course generation count
   await db
@@ -219,9 +221,8 @@ export async function deleteCourse(courseId: string) {
     if (!course || course.author !== userId) {
       throw new Error("Unauthorized");
     }
-    
-    await db.delete(courses).where(eq(courses.id, courseId));
 
+    await db.delete(courses).where(eq(courses.id, courseId));
 
     await db
       .update(users)
