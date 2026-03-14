@@ -1,285 +1,318 @@
-# Voice LMS - AI-Powered Voice Learning Platform
+# SyllabAI
 
-A modern Learning Management System that leverages voice interaction and AI to create personalized tutoring experiences. Learn through natural conversation with AI companions across various subjects.
+**SyllabAI** is an AI-powered course and syllabus generator that helps educators, students, and developers create structured learning content automatically.
 
-![screenshot](./public/voice-lms.png)  
+Using **Google Gemini AI**, SyllabAI can generate a full course — including chapters, lessons, and quizzes — from a simple topic or an uploaded PDF document.
 
-## 🚀 Features
+The platform provides an interactive dashboard where users can manage generated courses and track their learning progress.
 
-- **Voice-Based Learning**: Learn through natural conversation using speech recognition and synthesis
-- **AI Tutoring**: Personalized AI companions powered by Google Gemini Flash 1.5
-- **Multiple Subjects**: Mathematics, Science, Language, History, Coding, Economics, and more
-- **Real-time Interaction**: Live speech recognition with instant AI responses
-- **Session Management**: Track your learning progress and session history
+---
 
-### 🎨 User Experience
-- **Companion Builder**: Create custom AI tutors with personalized names, subjects, and teaching styles
-- **Voice Customization**: Choose between male/female voices and formal/casual teaching styles
-- **Interactive Sessions**: Visual feedback with animated speech indicators and real-time transcripts
-- **Responsive Design**: Optimized for desktop and mobile devices
-- **Modern UI**: Clean, intuitive interface built with Tailwind CSS and Radix UI
+# 🏗️ Architecture
 
-### 📊 Learning Management
-- **Progress Tracking**: Monitor your learning journey and session history
-- **Bookmarking**: Save favorite companions for quick access
-- **Subject Filtering**: Browse companions by subject categories
-- **Search Functionality**: Find specific topics and companions
-- **Session Duration**: Flexible learning sessions from 15-60 minutes
-- **Companion Management**: Create, edit, and delete your AI tutors
-- **User Dashboard**: Centralized view of your learning activity
+SyllabAI follows a **modern serverless architecture** built with the Next.js App Router.
 
-## 🛠️ Tech Stack
+* **Frontend & API:** Next.js (App Router)
+* **Authentication:** Clerk
+* **Database:** PostgreSQL (Neon)
+* **ORM:** Drizzle ORM
+* **AI Engine:** Google Gemini (via `@google/generative-ai`)
+* **PDF Processing:** `pdf-parse`
 
-### Frontend
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Headless UI components
-- **Lottie React** - Animations for visual feedback
-- **React Hook Form** - Form management with Zod validation
+The AI model processes prompts and returns structured course data, which is stored in PostgreSQL and displayed through the dashboard.
 
-### Backend & Database
-- **NeonDB** - Serverless PostgreSQL database
-- **Drizzle ORM** - TypeScript ORM for type-safe database access
-- **Server Actions** - Next.js server-side data handling
-- **Database Tables**:
-  - `companions` - AI tutor configurations
-  - `session_history` - Learning session tracking
-  - `users` - User profiles and preferences
+```mermaid
+graph TD
+    %% Define Styles
+    classDef client fill:#e0f2fe,stroke:#0369a1,stroke-width:2px,color:#0f172a
+    classDef server fill:#fef08a,stroke:#a16207,stroke-width:2px,color:#0f172a
+    classDef external fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#0f172a
+    classDef database fill:#f3e8ff,stroke:#7e22ce,stroke-width:2px,color:#0f172a
 
-### Authentication
-- **Clerk** - Complete authentication solution
-- **Protected Routes** - Secure user areas
-- **User Management** - Profile management and session handling
+    subgraph Client ["Client Side (Browser)"]
+        User((User))
+        UI["Next.js App Router<br/>(React, Tailwind, Shadcn)"]:::client
+    end
 
-### AI & Voice Technology
-- **Google Gemini Flash 1.5** - Advanced AI conversation model
-- **Browser Speech Recognition** - Native speech-to-text
-- **Browser Speech Synthesis** - Native text-to-speech
-- **Custom Voice AI Service** - Orchestrates voice interactions
+    subgraph Auth ["Authentication"]
+        Clerk["Clerk API"]:::external
+    end
 
-### Development Tools
-- **ESLint** - Code linting and formatting
-- **TypeScript** - Static type checking
-- **Vercel** - Deployment and hosting
-- **Git** - Version control
-- **GitHub Actions** - Automated database keep-alive
+    subgraph Backend ["Next.js Server"]
+        Actions["Server Actions<br/>(course.actions.ts)"]:::server
+        PDF["PDF Parser<br/>(pdf-parse)"]:::server
+        ORM["Drizzle ORM"]:::server
+    end
 
-## 📋 Prerequisites
+    subgraph AI ["AI Service"]
+        Gemini["Google Gemini API<br/>(Gemini 2.5 Flash)"]:::external
+    end
 
-- **Node.js** 18+ and pnpm
-- **Modern Browser** (Chrome, Edge, Safari recommended)
-- **Microphone** access for voice features
-- **Google AI API Key**
-- **NeonDB Account**
-- **Clerk Account**
+    subgraph DB ["Database"]
+        Neon[("Neon Serverless<br/>PostgreSQL")]:::database
+    end
 
-## 🚀 Quick Start
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/Sarcastic-Soul/Voice-LMS.git
-cd Voice-LMS
+    %% Flow interactions
+    User -- "Interacts with UI" --> UI
+    UI -. "Authenticates" .-> Clerk
+    UI -- "Submits Topic or PDF upload" --> Actions
+    Actions -- "Extracts text from File" --> PDF
+    PDF -- "Returns Document Text" --> Actions
+    Actions -- "Sends engineered prompt + JSON constraints" --> Gemini
+    Gemini -- "Returns structured Course/Syllabus JSON" --> Actions
+    Actions -- "Maps data to schema" --> ORM
+    ORM -- "Executes inserts/updates & cascades" --> Neon
+    Actions -- "Calls revalidatePath()" --> UI
 ```
 
-### 2. Install Dependencies
+---
+
+# 🚀 Features
+
+### AI Course Generation
+
+Generate complete courses by entering a simple topic.
+Courses include structured chapters, lessons, and quizzes.
+
+### PDF to Course
+
+Upload a PDF and automatically convert its content into a structured learning course.
+
+### Structured Syllabus
+
+Each course contains:
+
+* Chapters
+* Lessons
+* Quiz questions
+
+### User Dashboard
+
+Users can:
+
+* View generated courses
+* Track progress
+* Manage course content
+
+### Interactive Learning Content
+
+Lessons support:
+
+* Rich text
+* Mermaid diagrams
+* Interactive React code examples (`react-live`)
+
+### Course Management
+
+Users can delete courses, and all related chapters, quizzes, and questions are automatically removed using **cascade deletion**.
+
+---
+
+# 🛠️ Tech Stack
+
+| Category       | Technology           |
+| -------------- | -------------------- |
+| Frontend       | Next.js (App Router) |
+| Language       | TypeScript           |
+| AI             | Google Gemini        |
+| Authentication | Clerk                |
+| Database       | PostgreSQL (Neon)    |
+| ORM            | Drizzle ORM          |
+| File Parsing   | pdf-parse            |
+
+---
+
+# 🎬 Demo
+
+A short demo of SyllabAI in action.
+
+```
+[Add demo video link here]
+```
+---
+
+# 📸 Screenshots
+
+### Course Generation
+
+```
+[Add screenshot here]
+```
+
+### Dashboard
+
+```
+[Add screenshot here]
+```
+
+### Lesson View
+
+```
+[Add screenshot here]
+```
+
+---
+
+# 🚦 Getting Started
+
+## Prerequisites
+
+Make sure you have:
+
+* **Node.js 18+**
+* **pnpm** or **npm**
+* **Neon PostgreSQL account**
+* **Clerk account**
+* **Google Gemini API Key**
+
+---
+
+# Installation
+
+Clone the repository
+
+```bash
+git clone https://github.com/Sarcastic-Soul/SyllabAI.git
+cd syllabai
+```
+
+Install dependencies
+
 ```bash
 pnpm install
 ```
 
-### 3. Environment Setup
-Create a `.env.local` file in the root directory:
+or
 
-```env
-# Google AI Services
-NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
+```bash
+npm install
+```
 
-# NeonDB Configuration
-DATABASE_URL=your_neondb_connection_string
+---
 
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
+# Environment Variables
+
+Create a `.env.local` file in the root directory.
+
+```
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+
+# Database
+DATABASE_URL=
+
+# Google Gemini
+NEXT_PUBLIC_GEMINI_API_KEY=
 ```
 
-### 4. Database Setup (NeonDB + Drizzle)
+You may also create a `.env.example` file for easier setup.
 
-Push the database schema to your NeonDB instance:
+---
+
+# Database Setup
+
+Push the schema to Neon using Drizzle:
 
 ```bash
-pnpm db:push
+pnpm drizzle-kit push
 ```
 
-### 5. Authentication Setup (Clerk)
+or
 
-1. Create a Clerk application at [clerk.com](https://clerk.com)
-2. Configure sign-in/sign-up components
-3. Add your Clerk keys to the environment file
-4. Enable Google OAuth (optional)
+```bash
+npx drizzle-kit push
+```
 
-### 5. AI Service Setup (Google Gemini)
+---
 
-1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Create a new API key
-3. Add it to `NEXT_PUBLIC_GEMINI_API_KEY`
+# Running the Project
 
-### 6. Run Development Server
+Start the development server:
+
 ```bash
 pnpm dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) to see your application.
+or
 
-## 🏗️ Project Structure
-
-```
-Voice-LMS/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   ├── companions/        # Companion management pages
-│   ├── dashboard/         # Main dashboard
-│   ├── my-journey/        # User progress tracking
-│   └── sign-in|sign-up/   # Authentication pages
-├── components/            # Reusable UI components
-│   ├── ui/               # Radix UI components
-│   ├── CompanionCard.tsx # Companion display card
-│   ├── CompanionForm.tsx # Companion creation form
-│   └── CompanionComponent.tsx # Main voice interaction
-├── lib/                   # Utility libraries
-│   ├── actions/          # Server actions
-│   ├── db/               # Database configuration and schema
-│   ├── hooks/            # Custom React hooks
-│   ├── services/         # AI and voice services
-│   └── utils.ts          # Helper functions
-├── types/                # TypeScript definitions
-├── constants/            # App constants and data
-└── public/               # Static assets
-```
-
-## 🎮 Usage Guide
-
-### Creating Your First Companion
-
-1. **Sign In**: Create an account or sign in
-2. **Navigate**: Go to "Companions" → "New Companion"
-3. **Configure**: Fill out the companion form:
-   - **Name**: Give your AI tutor a name
-   - **Subject**: Choose from available subjects
-   - **Topic**: Describe what you want to learn
-   - **Voice**: Select male/female voice
-   - **Style**: Choose formal/casual teaching approach
-   - **Duration**: Set expected session length
-
-### Managing Your Companions
-
-1. **View All**: Go to "Manage" to see all your created companions
-2. **Delete**: Click the trash icon to remove unwanted companions
-3. **Confirm**: Confirm deletion in the modal dialog
-4. **Note**: Deleting a companion also removes its session history
-
-### Starting a Learning Session
-
-1. **Select**: Choose a companion from your library
-2. **Launch**: Click "Launch Lesson"
-3. **Begin**: Click "Start Session" to begin voice interaction
-4. **Interact**: Speak naturally - the AI will respond with voice
-5. **Control**: Use microphone button to mute/unmute
-6. **End**: Click "End Session" when finished
-
-### Managing Your Learning
-
-- **Dashboard**: View popular companions and recent sessions
-- **My Journey**: Track your progress and session history
-- **Bookmarks**: Save favorite companions for quick access
-- **Search & Filter**: Find specific topics or subjects
-- **Manage Companions**: View, edit, and delete your created companions
-
-## 🔧 Browser Compatibility
-
-### Fully Supported
-- ✅ **Chrome/Chromium** (Recommended)
-- ✅ **Microsoft Edge**
-- ✅ **Safari** (macOS/iOS)
-
-### Limited Support
-- ⚠️ **Firefox** (Speech recognition may not work)
-
-### Required Permissions
-- **Microphone Access**: For speech recognition
-- **Audio Playback**: For text-to-speech responses
-
-## 🐛 Troubleshooting
-
-### Speech Recognition Issues
-- Ensure you're using a supported browser
-- Check microphone permissions in browser settings
-- Verify microphone is working in other applications
-- Try refreshing the page
-
-### Voice Synthesis Problems
-- Confirm browser supports Speech Synthesis API
-- Check system audio settings
-- Try different voice options
-- Clear browser cache
-
-### AI Response Issues
-- Verify Gemini API key is valid and active
-- Check API quota limits
-- Ensure stable internet connection
-- Review browser console for error messages
-
-### Authentication Problems
-- Verify Clerk configuration
-- Check environment variables
-- Clear browser cookies and cache
-- Ensure correct redirect URLs
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-1. Connect your GitHub repository to Vercel
-2. Add environment variables in Vercel dashboard
-3. Deploy with automatic CI/CD
-
-### Manual Deployment
 ```bash
-pnpm build
-pnpm start
+npm run dev
 ```
 
+Open in browser:
 
-
-## �🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-- Follow TypeScript best practices
-- Use ESLint configuration
-- Write descriptive commit messages
-- Test voice features across browsers
-- Ensure mobile responsiveness
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🙏 Acknowledgments
-
-- **Google Gemini** for advanced AI capabilities
-- **NeonDB** for reliable serverless database
-- **Clerk** for seamless authentication
-- **Vercel** for excellent deployment platform
-- **Radix UI** for accessible component library
+```
+http://localhost:3000
+```
 
 ---
 
-**Built with ❤️ for the future of education**
+# 📚 Database Schema
+
+The database contains relational tables for:
+
+* Users
+* Courses
+* Chapters
+* Lessons
+* Quizzes
+* Questions
+
+All related data is automatically deleted when a course is removed using **`onDelete: cascade`**.
+
+```mermaid
+erDiagram
+
+    USERS {
+        text id PK
+        text email
+        integer coursesGenerated
+        integer currentStreak
+        timestamp lastActive
+        timestamp createdAt
+    }
+
+    COURSES {
+        uuid id PK
+        text author
+        text topic
+        integer duration
+        text difficulty
+        boolean isCompleted
+        timestamp createdAt
+    }
+
+    CHAPTERS {
+        uuid id PK
+        uuid courseId FK
+        text title
+        text content
+        text lessonText
+        integer order
+        boolean isCompleted
+        boolean isBookmarked
+    }
+
+    QUIZZES {
+        uuid id PK
+        uuid chapterId FK
+        integer score
+        boolean isCompleted
+    }
+
+    QUESTIONS {
+        uuid id PK
+        uuid quizId FK
+        text questionText
+        jsonb options
+        integer correctAnswer
+    }
+
+    COURSES ||--o{ CHAPTERS : contains
+    CHAPTERS ||--o{ QUIZZES : has
+    QUIZZES ||--o{ QUESTIONS : includes
