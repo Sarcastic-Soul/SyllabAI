@@ -23,6 +23,14 @@ const NavItems = () => {
             New Course
           </Link>
         </li>
+        <li>
+          <Link
+            href="/profile"
+            className="hover:text-primary transition-colors"
+          >
+            My Journey
+          </Link>
+        </li>
       </SignedIn>
     </ul>
   );

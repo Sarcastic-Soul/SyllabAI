@@ -12,6 +12,8 @@ import QuizComponent from "@/components/QuizComponent";
 import { generateChapterQuiz } from "@/lib/actions/quiz.actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import ReactMarkdown from "react-markdown";
+import MermaidDiagram from "@/components/MermaidDiagram";
+import ReactSandbox from "@/components/ReactSandbox";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -99,27 +101,49 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
+              components={{
+                code({ node, inline, className, children, ...props }: any) {
+                  const match = /language-(\w+)/.exec(className || "");
+                  const codeStr = String(children).replace(/\n$/, "");
+  
+                  // Intercept Mermaid blocks
+                  if (!inline && match && match[1] === "mermaid") {
+                    return <MermaidDiagram code={codeStr} />;
+                  }
+  
+                  // Intercept React Live blocks
+                  if (!inline && match && match[1] === "react-live") {
+                    return <ReactSandbox code={codeStr} />;
+                  }
+  
+                  // Standard code blocks
+                  return (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+              }}
             >
               {chapter.lessonText}
             </ReactMarkdown>
           </div>
         ) : (
-          <div className="mt-8 p-12 bg-secondary/30 border border-dashed rounded-xl flex flex-col items-center justify-center text-center space-y-4">
-            <h3 className="text-xl font-semibold">Ready to learn?</h3>
-            <p className="text-muted-foreground max-w-md">
-              Click below to let our AI generate a comprehensive, personalized
-              lesson for this topic.
+          <div className="py-12 flex flex-col items-center justify-center space-y-4 border rounded-2xl bg-muted/30">
+            <h2 className="text-2xl font-semibold">Ready to Learn?</h2>
+            <p className="text-muted-foreground text-center max-w-md">
+              Generate the comprehensive lesson content for "{chapter.title}".
             </p>
-            <form action={generateLessonAction} className="mt-4">
+            <form action={generateLessonAction}>
               <SubmitButton
-                defaultText="Generate AI Lesson"
-                loadingText="Writing Lesson..."
+                defaultText="Generate Lesson"
+                loadingText="Writing Content..."
               />
             </form>
           </div>
         )}
       </div>
-      
+
       {chapter.lessonText && (
         <div className="pt-12 border-t">
           <h2 className="text-2xl font-bold">Knowledge Check</h2>

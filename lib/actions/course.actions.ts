@@ -28,17 +28,17 @@ export async function generateCourse(params: CreateCourseParams) {
 
     // 1. Set up the prompt to force JSON output
     const prompt = `
-            You are an expert curriculum designer. Create a highly structured course syllabus.
+      // ... (Your existing instructions to write a comprehensive lesson) ...
 
-            Topic: ${topic}
-            Difficulty Level: ${difficulty}
-            Number of Chapters/Modules: ${duration}
+      CRITICAL FORMATTING INSTRUCTIONS:
+      Your primary goal is to write rich, engaging, text-based educational content. Do NOT rely solely on diagrams or code.
 
-            Return the response strictly as a JSON array of objects. Do not include markdown formatting like \`\`\`json.
-            Each object must represent a chapter and have exactly these two keys:
-            - "title": A concise, engaging title for the chapter.
-            - "content": A 2-3 sentence overview of what the student will learn in this chapter.
-        `;
+      OPTIONAL ENHANCEMENTS (Use Sparingly):
+      1. Mermaid Diagrams (\`\`\`mermaid): ONLY use a Mermaid diagram if the specific topic requires visualizing a process flow, hierarchy, or architecture. Do not use diagrams for simple lists or abstract concepts.
+      2. Interactive React Code (\`\`\`react-live): ONLY use this if you are explicitly teaching a Frontend/UI development concept. The code must be a self-contained functional component. Do not use this for Python, backend concepts, or non-coding topics.
+
+      If the topic does not strictly require a visual diagram or a React component, DO NOT generate them. Rely entirely on your excellent Markdown text explanations.
+    `;
 
     // 2. Call Gemini (Using Gemini 1.5 Flash for speed)
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
