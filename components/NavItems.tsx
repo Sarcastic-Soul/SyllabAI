@@ -1,35 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-
-const navItems = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "New Course", href: "/courses/new" }, 
-  { label: "My Journey", href: "/profile" },
-];
+import { SignedIn } from "@clerk/nextjs";
 
 const NavItems = () => {
-  const pathname = usePathname();
-
   return (
-    <nav className="flex items-center gap-6">
-      {navItems.map(({ label, href }) => (
-        <Link
-          href={href}
-          key={label}
-          className={cn(
-            "text-sm font-medium transition-colors hover:text-primary",
-            pathname === href || (href !== "/" && pathname.startsWith(href))
-              ? "text-primary font-semibold"
-              : "text-muted-foreground",
-          )}
-        >
-          {label}
-        </Link>
-      ))}
-    </nav>
+    <ul className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
+      <SignedIn>
+        <li>
+          <Link
+            href="/dashboard"
+            className="hover:text-primary transition-colors"
+          >
+            Dashboard
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/courses/new"
+            className="hover:text-primary transition-colors"
+          >
+            New Course
+          </Link>
+        </li>
+      </SignedIn>
+    </ul>
   );
 };
 

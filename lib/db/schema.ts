@@ -13,7 +13,6 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Clerk ID
   email: text("email"),
-  plan: text("plan").default("free").notNull(),
   coursesGenerated: integer("courses_generated").default(0).notNull(),
   currentStreak: integer("current_streak").default(0).notNull(),
   lastActive: timestamp("last_active"),

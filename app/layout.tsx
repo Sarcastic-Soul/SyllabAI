@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProvider, SignedIn } from "@clerk/nextjs";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import { SignedIn } from "@clerk/nextjs";
+import ConditionalNavbar from "@/components/ConditionalNavbar";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -11,8 +11,8 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: "Converso",
-  description: "Real-time AI Teaching Platform",
+  title: "SyllabAI",
+  description: "The Ultimate AI-Powered LMS",
 };
 
 export default function RootLayout({
@@ -21,11 +21,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${bricolage.variable} antialiased`}>
-        <ClerkProvider appearance={{ variables: { colorPrimary: '#fe5933' } }}>
+        <ClerkProvider appearance={{ variables: { colorPrimary: "#fe5933" } }}>
           <SignedIn>
-            <Navbar />
+            {/* 2. Wrapped Navbar */}
+            <ConditionalNavbar>
+              <Navbar />
+            </ConditionalNavbar>
           </SignedIn>
           {children}
         </ClerkProvider>
