@@ -102,6 +102,25 @@ Lessons support:
 * Mermaid diagrams
 * Interactive React code examples (`react-live`)
 
+### Advanced Analytics & Tracking
+
+The dashboard provides comprehensive statistics:
+
+* **Activity Heatmap:** GitHub-style daily streak tracking
+* **Time Spent:** Track estimated and actual time spent learning
+* **Accuracy Metrics:** Topic-by-topic quiz performance
+
+### Export Options
+
+Export your fully generated courses seamlessly:
+
+* **PDF Export:** Clean, printable view retaining all diagrams and formatting
+* **Markdown Export:** Direct download of structured `.md` files
+
+### Study Buddy
+
+* **Voice-Enabled AI Tutor:** Engage in interactive, live voice sessions to clear doubts and solidify understanding.
+
 ### Course Management
 
 Users can delete courses, and all related chapters, quizzes, and questions are automatically removed using **cascade deletion**.
@@ -200,8 +219,8 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL=/dashboard
+NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL=/dashboard
 
 # Database
 DATABASE_URL=
@@ -273,6 +292,8 @@ erDiagram
         text email
         integer coursesGenerated
         integer currentStreak
+        jsonb activityMap
+        integer totalTimeSpent
         timestamp lastActive
         timestamp createdAt
     }
@@ -283,6 +304,7 @@ erDiagram
         text topic
         integer duration
         text difficulty
+        integer timeSpent
         boolean isCompleted
         timestamp createdAt
     }
