@@ -81,10 +81,9 @@ export async function generateCourse(params: CreateCourseParams) {
       Your primary goal is to write rich, engaging, text-based educational content. Do NOT rely solely on diagrams or code.
 
       OPTIONAL ENHANCEMENTS (Use Sparingly):
-      1. Mermaid Diagrams (\`\`\`mermaid): ONLY use a Mermaid diagram if the specific topic requires visualizing a process flow, hierarchy, or architecture. Do not use diagrams for simple lists or abstract concepts.
-      2. Interactive React Code (\`\`\`react-live): ONLY use this if you are explicitly teaching a Frontend/UI development concept. The code must be a self-contained functional component. Do not use this for Python, backend concepts, or non-coding topics.
+      1. Mermaid Diagrams (```mermaid): ONLY use a Mermaid diagram if the specific topic requires visualizing a process flow, hierarchy, or architecture. Do not use diagrams for simple lists or abstract concepts.
 
-      If the topic does not strictly require a visual diagram or a React component, DO NOT generate them. Rely entirely on your excellent Markdown text explanations.
+      If the topic does not strictly require a visual diagram, DO NOT generate them. Rely entirely on your excellent Markdown text explanations.
     `;
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });

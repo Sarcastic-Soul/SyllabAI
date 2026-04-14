@@ -100,7 +100,6 @@ Lessons support:
 
 * Rich text
 * Mermaid diagrams
-* Interactive React code examples (`react-live`)
 
 ### Advanced Analytics & Tracking
 
@@ -179,7 +178,7 @@ A short demo of SyllabAI in action.
 Make sure you have:
 
 * **Node.js 18+**
-* **pnpm** or **npm**
+* **Bun**
 * **Neon PostgreSQL account**
 * **Clerk account**
 * **Google Gemini API Key**
@@ -198,13 +197,7 @@ cd syllabai
 Install dependencies
 
 ```bash
-pnpm install
-```
-
-or
-
-```bash
-npm install
+bun install
 ```
 
 ---
@@ -238,13 +231,7 @@ You may also create a `.env.example` file for easier setup.
 Push the schema to Neon using Drizzle:
 
 ```bash
-pnpm drizzle-kit push
-```
-
-or
-
-```bash
-npx drizzle-kit push
+bunx drizzle-kit push
 ```
 
 ---
@@ -254,13 +241,7 @@ npx drizzle-kit push
 Start the development server:
 
 ```bash
-pnpm dev
-```
-
-or
-
-```bash
-npm run dev
+bun dev
 ```
 
 Open in browser:

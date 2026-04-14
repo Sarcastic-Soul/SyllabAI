@@ -13,7 +13,6 @@ import { generateChapterQuiz } from "@/lib/actions/quiz.actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import ReactMarkdown from "react-markdown";
 import MermaidDiagram from "@/components/MermaidDiagram";
-import ReactSandbox from "@/components/ReactSandbox";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -147,15 +146,6 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
                                         return (
                                             <MermaidDiagram code={codeStr} />
                                         );
-                                    }
-
-                                    // Intercept React Live blocks
-                                    if (
-                                        !inline &&
-                                        match &&
-                                        match[1] === "react-live"
-                                    ) {
-                                        return <ReactSandbox code={codeStr} />;
                                     }
 
                                     // Standard code blocks
