@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { SignedIn } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
 
 const NavItems = () => {
   return (
     <ul className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
-      <SignedIn>
+      <Show when="signed-in">
         <li>
           <Link
             href="/dashboard"
@@ -31,7 +31,7 @@ const NavItems = () => {
             My Journey
           </Link>
         </li>
-      </SignedIn>
+      </Show>
     </ul>
   );
 };

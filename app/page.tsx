@@ -13,8 +13,7 @@ import {
     Zap,
 } from "lucide-react";
 import {
-    SignedIn,
-    SignedOut,
+    Show,
     SignInButton,
     SignUpButton,
     PricingTable,
@@ -86,7 +85,7 @@ export default function LandingPage() {
 
                 {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row items-center gap-4 pt-8">
-                    <SignedOut>
+                    <Show when="signed-out">
                         <SignUpButton>
                             <Button
                                 size="lg"
@@ -120,9 +119,9 @@ export default function LandingPage() {
                                 )}
                             </Button>
                         </SignInButton>
-                    </SignedOut>
+                    </Show>
 
-                    <SignedIn>
+                    <Show when="signed-in">
                         <Link href="/dashboard" className="w-full sm:w-auto">
                             <Button
                                 size="lg"
@@ -140,7 +139,7 @@ export default function LandingPage() {
                                 )}
                             </Button>
                         </Link>
-                    </SignedIn>
+                    </Show>
                 </div>
 
                 {/* Hero Image Mockup */}
@@ -225,7 +224,7 @@ export default function LandingPage() {
                     </p>
 
                     <div className="z-10">
-                        <SignedOut>
+                        <Show when="signed-out">
                             <SignUpButton>
                                 <Button
                                     size="lg"
@@ -235,8 +234,8 @@ export default function LandingPage() {
                                     Generate Your First Course
                                 </Button>
                             </SignUpButton>
-                        </SignedOut>
-                        <SignedIn>
+                        </Show>
+                        <Show when="signed-in">
                             <Link href="/dashboard">
                                 <Button
                                     size="lg"
@@ -246,7 +245,7 @@ export default function LandingPage() {
                                     Return to Dashboard
                                 </Button>
                             </Link>
-                        </SignedIn>
+                        </Show>
                     </div>
                 </div>
             </section>

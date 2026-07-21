@@ -178,7 +178,7 @@ A short demo of SyllabAI in action.
 Make sure you have:
 
 * **Node.js 18+**
-* **Bun**
+* **pnpm**
 * **Neon PostgreSQL account**
 * **Clerk account**
 * **Google Gemini API Key**
@@ -197,7 +197,7 @@ cd syllabai
 Install dependencies
 
 ```bash
-bun install
+pnpm install
 ```
 
 ---
@@ -231,7 +231,7 @@ You may also create a `.env.example` file for easier setup.
 Push the schema to Neon using Drizzle:
 
 ```bash
-bunx drizzle-kit push
+pnpm exec drizzle-kit push
 ```
 
 ---
@@ -241,7 +241,7 @@ bunx drizzle-kit push
 Start the development server:
 
 ```bash
-bun dev
+pnpm dev
 ```
 
 Open in browser:

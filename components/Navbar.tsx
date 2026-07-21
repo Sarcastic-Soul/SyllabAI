@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { SignedIn, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import NavItems from "@/components/NavItems";
 
@@ -23,7 +23,7 @@ const Navbar = async () => {
         {/* Safely imports the separate NavItems component now! */}
         <NavItems />
 
-        <SignedIn>
+        <Show when="signed-in">
           <div className="flex items-center gap-4">
             {/* Plan Badge */}
             <Link href="/subscription">
@@ -40,7 +40,7 @@ const Navbar = async () => {
 
             <UserButton afterSignOutUrl="/" />
           </div>
-        </SignedIn>
+        </Show>
       </div>
     </nav>
   );
