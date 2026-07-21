@@ -16,30 +16,35 @@ import {
 
 const ProfilePage = async () => {
   const { userId } = await auth();
-  const user = await currentUser();
 
-  if (!userId || !user) {
+  if (!userId) {
     redirect("/sign-in");
   }
 
-  const userDb = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  });
-
-  const currentStreak = userDb?.currentStreak || 0;
-
-  // Fetch all courses belonging to the user, including nested chapters and quizzes
-  const userCourses = await db.query.courses.findMany({
-    where: eq(courses.author, userId),
-    orderBy: [desc(courses.createdAt)],
-    with: {
-      chapters: {
-        with: {
-          quizzes: true,
+  // Run all independent data fetches in parallel
+  const [user, userDb, userCourses] = await Promise.all([
+    currentUser(),
+    db.query.users.findFirst({
+      where: eq(users.id, userId),
+    }),
+    db.query.courses.findMany({
+      where: eq(courses.author, userId),
+      orderBy: [desc(courses.createdAt)],
+      with: {
+        chapters: {
+          with: {
+            quizzes: true,
+          },
         },
       },
-    },
-  });
+    }),
+  ]);
+
+  if (!user) {
+    redirect("/sign-in");
+  }
+
+  const currentStreak = userDb?.currentStreak || 0;
 
   // Analytics Calculations
   let totalQuizzesTaken = 0;

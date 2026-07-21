@@ -130,7 +130,7 @@ export default function DashboardClient({
             return (
               <div
                 key={course.id}
-                className="relative group p-6 border rounded-xl hover:border-primary transition-colors bg-card space-y-4 h-full flex flex-col justify-between"
+                className="relative group p-6 border rounded-xl hover:border-primary hover:-translate-y-1 hover:shadow-lg transition-all duration-200 bg-card space-y-4 h-full flex flex-col justify-between"
               >
                 {/* Delete Button (Hidden until hover) */}
                 <Button

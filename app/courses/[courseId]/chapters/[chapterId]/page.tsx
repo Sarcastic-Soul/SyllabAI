@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import {
     markChapterComplete,
     generateChapterLesson,
+    generateChapterMermaid,
+    generateChapterFlashcards,
 } from "@/lib/actions/chapter.actions";
 import QuizComponent from "@/components/QuizComponent";
 import { generateChapterQuiz } from "@/lib/actions/quiz.actions";
@@ -17,8 +19,9 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-import { Spinner } from "@/components/ui/spinner";
-import { BookOpen, HelpCircle, CheckCircle } from "lucide-react";
+import GeneratingLesson from "@/components/GeneratingLesson";
+import { BookOpen, HelpCircle, CheckCircle, Sparkles } from "lucide-react";
+import GenerateWrapper from "@/components/GenerateWrapper";
 
 interface ChapterPageProps {
     params: Promise<{
@@ -39,6 +42,7 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
                     questions: true,
                 },
             },
+            flashcards: true,
         },
     });
 
@@ -69,6 +73,16 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
                 chapter.courseId,
             );
         }
+    };
+
+    const generateMermaidAction = async () => {
+        "use server";
+        await generateChapterMermaid(chapter.id, chapter.course.topic, chapter.title);
+    };
+
+    const generateFlashcardsAction = async () => {
+        "use server";
+        await generateChapterFlashcards(chapter.id);
     };
     const quiz = chapter?.quizzes[0];
 
@@ -105,17 +119,7 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
 
             <div className="min-h-[300px]">
                 {chapter.lessonText === "GENERATING" ? (
-                    <div className="py-12 flex flex-col items-center justify-center space-y-4 border rounded-2xl bg-muted/30">
-                        <Spinner className="w-8 h-8" />
-                        <h2 className="text-2xl font-semibold animate-pulse">
-                            Generating Lesson...
-                        </h2>
-                        <p className="text-muted-foreground text-center max-w-md">
-                            Please wait while our AI builds a comprehensive
-                            curriculum for this chapter. This may take a few
-                            moments.
-                        </p>
-                    </div>
+                    <GeneratingLesson />
                 ) : chapter.lessonText ? (
                     <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl">
                         <ReactMarkdown
@@ -169,13 +173,12 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
                             Generate the comprehensive lesson content for "
                             {chapter.title}".
                         </p>
-                        <form action={generateLessonAction}>
-                            <SubmitButton
-                                defaultText="Generate Lesson"
-                                loadingText="Writing Content..."
-                                icon={<BookOpen className="w-5 h-5 mr-2" />}
-                            />
-                        </form>
+                        <GenerateWrapper
+                            action={generateLessonAction}
+                            defaultText="Generate Lesson"
+                            loadingText="Writing Content..."
+                            icon={<BookOpen className="w-5 h-5 mr-2" />}
+                        />
                     </div>
                 )}
             </div>
@@ -196,15 +199,71 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
                             <p className="text-muted-foreground">
                                 Test your understanding of this lesson.
                             </p>
-                            <form action={generateQuizAction}>
-                                <SubmitButton
-                                    defaultText="Generate Quiz"
-                                    loadingText="Creating Questions..."
-                                    icon={
-                                        <HelpCircle className="w-5 h-5 mr-2" />
-                                    }
-                                />
-                            </form>
+                            <GenerateWrapper
+                                action={generateQuizAction}
+                                defaultText="Generate Quiz"
+                                loadingText="Creating Questions..."
+                                icon={<HelpCircle className="w-5 h-5 mr-2" />}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Mermaid Diagram Section */}
+            {chapter.lessonText && chapter.lessonText !== "GENERATING" && (
+                <div className="pt-12 border-t">
+                    <h2 className="text-2xl font-bold mb-4">Visual Concept</h2>
+                    {chapter.mermaidDiagram ? (
+                        <div className="p-4 bg-card border rounded-xl overflow-auto">
+                            <MermaidDiagram code={chapter.mermaidDiagram} regenerateAction={generateMermaidAction} />
+                        </div>
+                    ) : (
+                        <div className="mt-4 p-6 bg-secondary/20 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <p className="text-muted-foreground">
+                                Generate a visual diagram for this lesson.
+                            </p>
+                            <GenerateWrapper
+                                action={generateMermaidAction}
+                                defaultText="Generate Diagram"
+                                loadingText="Drawing..."
+                                icon={<Sparkles className="w-5 h-5 mr-2" />}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Flashcards Section */}
+            {chapter.lessonText && chapter.lessonText !== "GENERATING" && (
+                <div className="pt-12 border-t">
+                    <h2 className="text-2xl font-bold mb-4">Flashcards</h2>
+                    {chapter.flashcards && chapter.flashcards.length > 0 ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {chapter.flashcards.map((card) => (
+                                <div key={card.id} className="p-6 bg-card border rounded-xl space-y-4">
+                                    <div>
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Question</span>
+                                        <p className="mt-1 font-medium">{card.front}</p>
+                                    </div>
+                                    <div className="pt-4 border-t">
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Answer</span>
+                                        <p className="mt-1 text-muted-foreground">{card.back}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="mt-4 p-6 bg-secondary/20 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <p className="text-muted-foreground">
+                                Generate flashcards to study key terms.
+                            </p>
+                            <GenerateWrapper
+                                action={generateFlashcardsAction}
+                                defaultText="Generate Flashcards"
+                                loadingText="Creating Cards..."
+                                icon={<BookOpen className="w-5 h-5 mr-2" />}
+                            />
                         </div>
                     )}
                 </div>

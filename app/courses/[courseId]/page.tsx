@@ -14,9 +14,13 @@ import {
     Eye,
 } from "lucide-react";
 import { toggleChapterBookmark } from "@/lib/actions/chapter.actions";
+import { generateCourseCheatSheet } from "@/lib/actions/course.actions";
 import StudyBuddy from "@/components/StudyBuddy";
 import DeleteCourseButton from "@/components/DeleteCourseButton";
 import ExportCourseButtons from "@/components/ExportCourseButtons";
+import { SubmitButton } from "@/components/SubmitButton";
+import ReactMarkdown from "react-markdown";
+import GenerateWrapper from "@/components/GenerateWrapper";
 
 interface CoursePageProps {
     params: Promise<{
@@ -68,6 +72,11 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
     const courseStructureString = course.chapters
         .map((c) => `Chapter ${c.order}: ${c.title} - ${c.content}`)
         .join(" | ");
+
+    const generateCheatSheetAction = async () => {
+        "use server";
+        await generateCourseCheatSheet(course.id);
+    };
 
     return (
         <div className="max-w-6xl mx-auto p-6 space-y-10">
@@ -157,6 +166,7 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
                     </div>
                 </Link>
             </div>
+
 
             {/* Layout Split: Chapters on Left, Buddy on Right (or Bottom on Mobile) */}
             <div className="flex flex-col-reverse lg:flex-row gap-8 items-start">
@@ -253,6 +263,34 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
                         })}
                     </div>
                 </div>
+            </div>
+
+            {/* Course Cheat Sheet Section (Moved to bottom) */}
+            <div className="bg-card border rounded-2xl p-6 md:p-8 space-y-6 mt-8">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <Sparkles className="w-6 h-6 text-primary" />
+                        Course Cheat Sheet
+                    </h2>
+                    {!course.cheatSheet && (
+                        <GenerateWrapper
+                            action={generateCheatSheetAction}
+                            defaultText="Generate Cheat Sheet"
+                            loadingText="Summarizing..."
+                            icon={<Sparkles className="w-4 h-4 mr-2" />}
+                        />
+                    )}
+                </div>
+                
+                {course.cheatSheet ? (
+                    <div className="prose prose-slate dark:prose-invert max-w-none bg-secondary/10 p-6 rounded-xl border border-secondary">
+                        <ReactMarkdown>{course.cheatSheet}</ReactMarkdown>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-muted-foreground bg-secondary/10 rounded-xl border border-dashed border-secondary">
+                        <p>No cheat sheet generated yet. Summarize the course content into a quick reference guide!</p>
+                    </div>
+                )}
             </div>
         </div>
     );

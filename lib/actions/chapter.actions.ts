@@ -115,11 +115,10 @@ export async function generateChapterLesson(
             Write a highly detailed, engaging, and easy-to-understand lesson for this chapter.
             Use Markdown formatting (headings, bullet points, bold text).
             Include real-world examples, analogies, and a brief summary at the end.
-            MUST INCLUDE at least one Mermaid diagram (e.g. flowchart, sequence diagram, state diagram, etc.) inside a \`\`\`mermaid codeblock to visually explain a key concept.
             Do NOT include the chapter title as an H1, just start directly with the content.
         `;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
         const result = await model.generateContent(prompt);
         const lessonContent = result.response.text();
 
@@ -141,5 +140,118 @@ export async function generateChapterLesson(
 
         console.error("Error generating lesson:", error);
         throw new Error("Failed to generate lesson content");
+    }
+}
+
+export async function generateChapterMermaid(
+    chapterId: string,
+    courseTopic: string,
+    chapterTitle: string,
+) {
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
+
+        const chapter = await db.query.chapters.findFirst({
+            where: eq(chapters.id, chapterId),
+        });
+
+        if (!chapter || !chapter.lessonText) {
+            throw new Error("Chapter lesson text not found");
+        }
+
+        const prompt = `
+            You are an expert in visual education. Based on the following lesson text for the chapter "${chapterTitle}" in the course "${courseTopic}", generate a SINGLE Mermaid diagram (e.g. flowchart, sequence diagram, state diagram, etc.) that visually explains a key concept from the lesson.
+            
+            CRITICAL: Return ONLY the raw Mermaid code block. Do NOT include any explanations or markdown outside the code block. Start with \`\`\`mermaid and end with \`\`\`.
+            CRITICAL: The Mermaid syntax MUST be perfectly valid. Do NOT use any HTML tags (like <br>) in node labels. If a node label contains special characters (like parentheses, commas, or brackets), you MUST enclose the label in double quotes (e.g. \`A["Node (Info)"]\` instead of \`A[Node (Info)]\`). Keep node labels concise.
+            CRITICAL: Do NOT include ANY comments (such as // or %%) anywhere in the Mermaid code. Ensure all node relationships are perfectly formatted.
+
+            Lesson Text:
+            ${chapter.lessonText}
+        `;
+
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+        const result = await model.generateContent(prompt);
+        let mermaidContent = result.response.text();
+        
+        // Clean up markdown block if present
+        mermaidContent = mermaidContent.replace(/```mermaid\n?/i, "").replace(/```/g, "").trim();
+
+        await db
+            .update(chapters)
+            .set({ mermaidDiagram: mermaidContent })
+            .where(eq(chapters.id, chapterId));
+
+        revalidatePath(`/courses/[courseId]/chapters/${chapterId}`, "page");
+
+        return { success: true, mermaidDiagram: mermaidContent };
+    } catch (error) {
+        console.error("Error generating mermaid diagram:", error);
+        throw new Error("Failed to generate mermaid diagram");
+    }
+}
+
+export async function generateChapterFlashcards(chapterId: string) {
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
+
+        const chapter = await db.query.chapters.findFirst({
+            where: eq(chapters.id, chapterId),
+        });
+
+        if (!chapter || !chapter.lessonText) {
+            throw new Error("Chapter lesson text not found");
+        }
+
+        const prompt = `
+            Based on the following lesson text, generate 5-10 flashcards that cover the most important concepts.
+            
+            CRITICAL: You must ALWAYS respond with a valid JSON array of objects. Each object must have a "front" (the question or term) and a "back" (the answer or definition).
+            
+            Lesson Text:
+            ${chapter.lessonText}
+        `;
+
+        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" },
+        });
+
+        const responseText = result.response.text();
+        let flashcardsData;
+        try {
+            const cleanedText = responseText
+                .replace(/```json\n?/gi, "")
+                .replace(/```/g, "")
+                .trim();
+            flashcardsData = JSON.parse(cleanedText);
+        } catch (e) {
+            console.error("Failed to parse AI response:", responseText);
+            throw new Error("Failed to format flashcards properly.");
+        }
+
+        if (!Array.isArray(flashcardsData) || flashcardsData.length === 0) {
+            throw new Error("The AI returned an empty flashcard list.");
+        }
+
+        // Insert into database
+        const { flashcards } = await import("@/lib/db/schema");
+        const flashcardsToInsert = flashcardsData.map((fc: any) => ({
+            chapterId: chapterId,
+            front: fc.front,
+            back: fc.back,
+        }));
+
+        await db.insert(flashcards).values(flashcardsToInsert);
+
+        revalidatePath(`/courses/[courseId]/chapters/${chapterId}`, "page");
+
+        return { success: true, flashcards: flashcardsToInsert };
+    } catch (error) {
+        console.error("Error generating flashcards:", error);
+        throw new Error("Failed to generate flashcards");
     }
 }

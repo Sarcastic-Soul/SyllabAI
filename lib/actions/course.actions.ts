@@ -68,6 +68,22 @@ export async function generateCourse(params: CreateCourseParams) {
         const { userId } = await auth();
         if (!userId) throw new Error("Unauthorized");
 
+        // Limit Check
+        const userDb = await db.query.users.findFirst({
+            where: eq(users.id, userId),
+        });
+
+        if (!userDb) throw new Error("User not found");
+
+        if (userDb.subscriptionPlan === "basic") {
+            const activeCourses = await db.query.courses.findMany({
+                where: eq(courses.author, userId),
+            });
+            if (activeCourses.length >= 2) {
+                throw new Error("BASIC_PLAN_LIMIT_REACHED");
+            }
+        }
+
         const { topic, duration, difficulty } = params;
 
         const prompt = `
@@ -86,7 +102,7 @@ export async function generateCourse(params: CreateCourseParams) {
       If the topic does not strictly require a visual diagram, DO NOT generate them. Rely entirely on your excellent Markdown text explanations.
     `;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
         const result = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: "application/json" },
@@ -139,6 +155,22 @@ export async function generateCourseFromPDF(formData: FormData) {
         const { userId } = await auth();
         if (!userId) throw new Error("Unauthorized");
 
+        // Limit Check
+        const userDb = await db.query.users.findFirst({
+            where: eq(users.id, userId),
+        });
+
+        if (!userDb) throw new Error("User not found");
+
+        if (userDb.subscriptionPlan === "basic") {
+            const activeCourses = await db.query.courses.findMany({
+                where: eq(courses.author, userId),
+            });
+            if (activeCourses.length >= 2) {
+                throw new Error("BASIC_PLAN_LIMIT_REACHED");
+            }
+        }
+
         const file = formData.get("file") as File;
         const duration = parseInt(formData.get("duration") as string) || 5;
         const difficulty =
@@ -170,7 +202,7 @@ export async function generateCourseFromPDF(formData: FormData) {
       Your primary goal is to write rich, engaging, text-based educational content derived ONLY from the source text above.
     `;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 
         // Enforce JSON strictly for the PDF version too
         const aiResult = await model.generateContent({
@@ -246,5 +278,59 @@ export async function deleteCourse(courseId: string) {
     } catch (error) {
         console.error("Error deleting course:", error);
         throw new Error("Failed to delete course");
+    }
+}
+
+export async function generateCourseCheatSheet(courseId: string) {
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
+
+        const course = await db.query.courses.findFirst({
+            where: eq(courses.id, courseId),
+            with: {
+                chapters: true,
+            },
+        });
+
+        if (!course || course.author !== userId) {
+            throw new Error("Unauthorized or course not found");
+        }
+
+        const chapterTexts = course.chapters
+            .filter((c) => c.lessonText)
+            .map((c) => `Chapter: ${c.title}\n${c.lessonText}`)
+            .join("\n\n");
+
+        if (!chapterTexts) {
+            throw new Error("No chapter content available to generate a cheat sheet.");
+        }
+
+        const prompt = `
+            You are an expert tutor creating a concise, high-yield cheat sheet for a course.
+            Course Topic: ${course.topic}
+            
+            Based on the following chapter contents, generate a comprehensive cheat sheet summarizing the key concepts, formulas, definitions, and takeaways. Use markdown formatting (headers, bullet points, bold text).
+            
+            Chapter Contents:
+            ${chapterTexts.substring(0, 50000)}
+        `;
+
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+        const result = await model.generateContent(prompt);
+        const cheatSheetContent = result.response.text();
+
+        await db
+            .update(courses)
+            .set({ cheatSheet: cheatSheetContent })
+            .where(eq(courses.id, courseId));
+
+        revalidatePath(`/dashboard`);
+        revalidatePath(`/courses/${courseId}`);
+
+        return { success: true, cheatSheet: cheatSheetContent };
+    } catch (error) {
+        console.error("Error generating cheat sheet:", error);
+        throw new Error("Failed to generate cheat sheet");
     }
 }

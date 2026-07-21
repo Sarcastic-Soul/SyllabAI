@@ -13,6 +13,7 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
     id: text("id").primaryKey(), // Clerk ID
     email: text("email"),
+    subscriptionPlan: text("subscription_plan").default("basic").notNull(),
     coursesGenerated: integer("courses_generated").default(0).notNull(),
     currentStreak: integer("current_streak").default(0).notNull(),
     activityMap: jsonb("activity_map").default({}).notNull(),
@@ -28,6 +29,7 @@ export const courses = pgTable("courses", {
     topic: text("topic").notNull(), // The main subject they searched for
     duration: integer("duration").notNull(), // e.g., in weeks or hours
     difficulty: text("difficulty").notNull(), // beginner, intermediate, advanced
+    cheatSheet: text("cheat_sheet"),
     timeSpent: integer("time_spent").default(0).notNull(), // in seconds
     isCompleted: boolean("isCompleted").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -42,6 +44,7 @@ export const chapters = pgTable("chapters", {
     title: text("title").notNull(),
     content: text("content"),
     lessonText: text("lesson_text"),
+    mermaidDiagram: text("mermaid_diagram"),
     order: integer("order").notNull(),
     isCompleted: boolean("isCompleted").default(false).notNull(),
     isBookmarked: boolean("isBookmarked").default(false).notNull(),
@@ -68,6 +71,16 @@ export const questions = pgTable("questions", {
     correctAnswer: integer("correct_answer").notNull(), // Index of the correct option
 });
 
+// 5. Flashcards for Chapters
+export const flashcards = pgTable("flashcards", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chapterId: uuid("chapter_id")
+        .references(() => chapters.id, { onDelete: "cascade" })
+        .notNull(),
+    front: text("front").notNull(),
+    back: text("back").notNull(),
+});
+
 // --- Relations ---
 export const courseRelations = relations(courses, ({ many }) => ({
     chapters: many(chapters),
@@ -79,6 +92,7 @@ export const chapterRelations = relations(chapters, ({ one, many }) => ({
         references: [courses.id],
     }),
     quizzes: many(quizzes),
+    flashcards: many(flashcards),
 }));
 
 export const quizRelations = relations(quizzes, ({ one, many }) => ({
@@ -93,5 +107,12 @@ export const questionRelations = relations(questions, ({ one }) => ({
     quiz: one(quizzes, {
         fields: [questions.quizId],
         references: [quizzes.id],
+    }),
+}));
+
+export const flashcardRelations = relations(flashcards, ({ one }) => ({
+    chapter: one(chapters, {
+        fields: [flashcards.chapterId],
+        references: [chapters.id],
     }),
 }));
