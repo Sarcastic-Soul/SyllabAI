@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import { submitQuizScore } from "@/lib/actions/quiz.actions";
 import { Spinner } from "@/components/ui/spinner"; // Import shadcn spinner
 

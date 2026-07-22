@@ -1,6 +1,4 @@
-import { db } from "@/lib/db";
-import { chapters } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { getChapterWithDetails } from "@/lib/queries";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,18 +8,19 @@ import {
     generateChapterMermaid,
     generateChapterFlashcards,
 } from "@/lib/actions/chapter.actions";
-import QuizComponent from "@/components/QuizComponent";
+import QuizComponent from "@/components/course/QuizComponent";
 import { generateChapterQuiz } from "@/lib/actions/quiz.actions";
-import { SubmitButton } from "@/components/SubmitButton";
+import { SubmitButton } from "@/components/shared/SubmitButton";
 import ReactMarkdown from "react-markdown";
-import MermaidDiagram from "@/components/MermaidDiagram";
+import MermaidDiagram from "@/components/course/MermaidDiagram";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-import GeneratingLesson from "@/components/GeneratingLesson";
+import GeneratingLesson from "@/components/course/GeneratingLesson";
 import { BookOpen, HelpCircle, CheckCircle, Sparkles } from "lucide-react";
-import GenerateWrapper from "@/components/GenerateWrapper";
+import GenerateWrapper from "@/components/course/GenerateWrapper";
+import FlashcardReview from "@/components/course/FlashcardReview";
 
 interface ChapterPageProps {
     params: Promise<{
@@ -33,18 +32,7 @@ interface ChapterPageProps {
 const ChapterPage = async ({ params }: ChapterPageProps) => {
     const { courseId, chapterId } = await params;
 
-    const chapter = await db.query.chapters.findFirst({
-        where: eq(chapters.id, chapterId),
-        with: {
-            course: true,
-            quizzes: {
-                with: {
-                    questions: true,
-                },
-            },
-            flashcards: true,
-        },
-    });
+    const chapter = await getChapterWithDetails(chapterId);
 
     if (!chapter || chapter.courseId !== courseId) {
         notFound();
@@ -234,25 +222,24 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
                 </div>
             )}
 
-            {/* Flashcards Section */}
             {chapter.lessonText && chapter.lessonText !== "GENERATING" && (
                 <div className="pt-12 border-t">
-                    <h2 className="text-2xl font-bold mb-4">Flashcards</h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-2xl font-bold">Flashcards</h2>
+                        {chapter.flashcards && chapter.flashcards.length > 0 && (
+                            <GenerateWrapper
+                                action={generateFlashcardsAction}
+                                defaultText="Generate More"
+                                loadingText="Creating Cards..."
+                                icon={<BookOpen className="w-4 h-4 mr-2" />}
+                            />
+                        )}
+                    </div>
                     {chapter.flashcards && chapter.flashcards.length > 0 ? (
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {chapter.flashcards.map((card) => (
-                                <div key={card.id} className="p-6 bg-card border rounded-xl space-y-4">
-                                    <div>
-                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Question</span>
-                                        <p className="mt-1 font-medium">{card.front}</p>
-                                    </div>
-                                    <div className="pt-4 border-t">
-                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Answer</span>
-                                        <p className="mt-1 text-muted-foreground">{card.back}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <FlashcardReview
+                            flashcards={chapter.flashcards}
+                            chapterId={chapter.id}
+                        />
                     ) : (
                         <div className="mt-4 p-6 bg-secondary/20 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <p className="text-muted-foreground">

@@ -5,7 +5,7 @@ import { Show } from "@clerk/nextjs";
 
 const NavItems = () => {
   return (
-    <ul className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
+    <ul className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 text-sm font-medium text-muted-foreground">
       <Show when="signed-in">
         <li>
           <Link

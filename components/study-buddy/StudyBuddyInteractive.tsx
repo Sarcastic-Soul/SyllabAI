@@ -9,16 +9,17 @@ import {
   ArrowLeft,
   MousePointer2,
   Hand,
+  Trash2,
 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { askStudyBuddy } from "@/lib/actions/studybuddy.actions";
+import { askStudyBuddy, getConversationHistory, clearConversationHistory } from "@/lib/actions/studybuddy.actions";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface StudyBuddyProps {
-  courseId: string;
   courseTopic: string;
   courseStructure: string;
+  courseId: string;
 }
 
 type Message = {
@@ -60,6 +61,27 @@ export default function StudyBuddyInteractive({
   // FIX: Storing utterances here prevents the Chrome Garbage Collection bug from randomly stopping audio!
   const currentUtterances = useRef<SpeechSynthesisUtterance[]>([]);
 
+  // Load Conversation History
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const history = await getConversationHistory(courseId);
+        if (history && history.length > 0) {
+          setConversation(
+            history.map((msg) => ({
+              id: msg.id,
+              role: msg.role as "user" | "ai",
+              text: msg.content,
+            })),
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load conversation history:", err);
+      }
+    };
+    loadHistory();
+  }, [courseId]);
+
   // Auto-scroll chat to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -69,7 +91,7 @@ export default function StudyBuddyInteractive({
   useEffect(() => {
     if (typeof window !== "undefined") {
       const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (!SpeechRecognition || !window.speechSynthesis) {
         setIsSupported(false);
         return;
@@ -114,6 +136,21 @@ export default function StudyBuddyInteractive({
       recognitionRef.current?.stop();
     };
   }, []);
+
+  const handleClearHistory = async () => {
+    try {
+      await clearConversationHistory(courseId);
+      setConversation([
+        {
+          id: "welcome",
+          role: "ai",
+          text: "Hi there! I'm your Study Buddy. Hold the Spacebar or the microphone button and ask me anything about this course.",
+        },
+      ]);
+    } catch (err) {
+      console.error("Failed to clear history:", err);
+    }
+  };
 
   // --- Core Actions ---
   const startListening = () => {
@@ -170,6 +207,7 @@ export default function StudyBuddyInteractive({
         question,
         courseTopic,
         courseStructure,
+        courseId,
       );
 
       // Append AI Message
@@ -334,10 +372,22 @@ export default function StudyBuddyInteractive({
           </Button>
         </Link>
 
-        {/* Mode Toggle Switch */}
-        <div className="flex items-center bg-secondary/50 p-1 rounded-lg">
-          <button
-            onClick={() => setInteractionMode("ptt")}
+        <div className="flex items-center gap-2">
+          {/* Clear History Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClearHistory}
+            className="text-muted-foreground hover:text-destructive transition-colors"
+            title="Clear Conversation History"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+
+          {/* Mode Toggle Switch */}
+          <div className="flex items-center bg-secondary/50 p-1 rounded-lg">
+            <button
+              onClick={() => setInteractionMode("ptt")}
             className={cn(
               "px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-2",
               interactionMode === "ptt"
@@ -358,6 +408,7 @@ export default function StudyBuddyInteractive({
           >
             <MousePointer2 className="w-3.5 h-3.5" /> Tap to Talk
           </button>
+        </div>
         </div>
       </div>
 

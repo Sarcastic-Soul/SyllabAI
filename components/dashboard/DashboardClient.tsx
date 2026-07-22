@@ -14,11 +14,12 @@ import {
 import { deleteCourse } from "@/lib/actions/course.actions";
 import { Spinner } from "@/components/ui/spinner";
 import { useRouter } from "next/navigation";
+import type { UserCourseWithChapters } from "@/lib/db/drizzle.types";
 
 export default function DashboardClient({
   initialCourses,
 }: {
-  initialCourses: any[];
+  initialCourses: UserCourseWithChapters[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -49,7 +50,7 @@ export default function DashboardClient({
   let displayedCourses = initialCourses.filter((course) => {
     const isCompleted =
       course.chapters.length > 0 &&
-      course.chapters.every((c: any) => c.isCompleted);
+      course.chapters.every((c) => c.isCompleted);
 
     // Status Filter
     if (filterStatus === "completed" && !isCompleted) return false;
@@ -118,7 +119,7 @@ export default function DashboardClient({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayedCourses.map((course) => {
             const completedChapters = course.chapters.filter(
-              (c: any) => c.isCompleted,
+              (c) => c.isCompleted,
             ).length;
             const totalChapters = course.chapters.length;
             const progress =

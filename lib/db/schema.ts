@@ -7,6 +7,7 @@ import {
     timestamp,
     uuid,
     jsonb,
+    vector,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -32,6 +33,8 @@ export const courses = pgTable("courses", {
     cheatSheet: text("cheat_sheet"),
     timeSpent: integer("time_spent").default(0).notNull(), // in seconds
     isCompleted: boolean("isCompleted").default(false).notNull(),
+    isPublic: boolean("is_public").default(false).notNull(),
+    shareSlug: text("share_slug").unique(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -71,7 +74,7 @@ export const questions = pgTable("questions", {
     correctAnswer: integer("correct_answer").notNull(), // Index of the correct option
 });
 
-// 5. Flashcards for Chapters
+// 5. Flashcards for Chapters (with SM-2 Spaced Repetition)
 export const flashcards = pgTable("flashcards", {
     id: uuid("id").defaultRandom().primaryKey(),
     chapterId: uuid("chapter_id")
@@ -79,11 +82,49 @@ export const flashcards = pgTable("flashcards", {
         .notNull(),
     front: text("front").notNull(),
     back: text("back").notNull(),
+    // SM-2 Spaced Repetition fields
+    easeFactor: integer("ease_factor").default(250).notNull(), // ×100 to avoid floats (2.5 = 250)
+    interval: integer("interval").default(0).notNull(),         // days until next review
+    nextReviewAt: timestamp("next_review_at").defaultNow().notNull(),
+});
+
+// 6. Documents uploaded for RAG
+export const documents = pgTable("documents", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    courseId: uuid("course_id")
+        .references(() => courses.id, { onDelete: "cascade" })
+        .notNull(),
+    filename: text("filename").notNull(),
+    uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+});
+
+// 7. Chunks and Embeddings for Documents
+export const documentChunks = pgTable("document_chunks", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    documentId: uuid("document_id")
+        .references(() => documents.id, { onDelete: "cascade" })
+        .notNull(),
+    content: text("content").notNull(),
+    embedding: vector("embedding", { dimensions: 768 }), // Gemini text-embedding-004 has 768 dims
+});
+
+// 8. Study Buddy Conversation History
+export const studyBuddyMessages = pgTable("study_buddy_messages", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    courseId: uuid("course_id")
+        .references(() => courses.id, { onDelete: "cascade" })
+        .notNull(),
+    userId: text("user_id").notNull(),
+    role: text("role").notNull(), // "user" | "ai"
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // --- Relations ---
 export const courseRelations = relations(courses, ({ many }) => ({
     chapters: many(chapters),
+    documents: many(documents),
+    studyBuddyMessages: many(studyBuddyMessages),
 }));
 
 export const chapterRelations = relations(chapters, ({ one, many }) => ({
@@ -114,5 +155,27 @@ export const flashcardRelations = relations(flashcards, ({ one }) => ({
     chapter: one(chapters, {
         fields: [flashcards.chapterId],
         references: [chapters.id],
+    }),
+}));
+
+export const documentRelations = relations(documents, ({ one, many }) => ({
+    course: one(courses, {
+        fields: [documents.courseId],
+        references: [courses.id],
+    }),
+    chunks: many(documentChunks),
+}));
+
+export const documentChunkRelations = relations(documentChunks, ({ one }) => ({
+    document: one(documents, {
+        fields: [documentChunks.documentId],
+        references: [documents.id],
+    }),
+}));
+
+export const studyBuddyMessageRelations = relations(studyBuddyMessages, ({ one }) => ({
+    course: one(courses, {
+        fields: [studyBuddyMessages.courseId],
+        references: [courses.id],
     }),
 }));

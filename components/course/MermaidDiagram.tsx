@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 
 // Mermaid is lazy-imported inside the effect to avoid shipping its ~3MB
 // bundle to pages that don't contain any diagrams.
@@ -68,10 +68,51 @@ export default function MermaidDiagram({ code, regenerateAction }: { code: strin
     );
   }
 
+  const downloadPNG = () => {
+    if (!svg) return;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    
+    // We must encode the SVG to base64 or create an object URL to draw it to canvas
+    const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+
+    img.onload = () => {
+      // Scale up for higher resolution
+      const scale = 2;
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      
+      if (ctx) {
+        ctx.fillStyle = "white"; // White background instead of transparent
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        const pngData = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = pngData;
+        a.download = "mermaid-diagram.png";
+        a.click();
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
+
   return (
-    <div
-      className="flex justify-center my-8 p-6 bg-white border rounded-2xl shadow-sm overflow-x-auto"
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+    <div className="my-8 flex flex-col items-center">
+        <div
+        className="w-full flex justify-center p-6 bg-white border rounded-2xl shadow-sm overflow-x-auto"
+        dangerouslySetInnerHTML={{ __html: svg }}
+        />
+        <button 
+            onClick={downloadPNG}
+            className="mt-4 flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium shadow-sm"
+        >
+            <Download className="w-4 h-4" />
+            Download PNG
+        </button>
+    </div>
   );
 }

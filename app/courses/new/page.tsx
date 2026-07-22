@@ -1,4 +1,4 @@
-import CourseForm from "@/components/CourseForm";
+import CourseForm from "@/components/course/CourseForm";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";

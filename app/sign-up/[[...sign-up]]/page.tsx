@@ -154,7 +154,7 @@ export default function SignUpPage() {
               path="/sign-up"
               routing="path"
               signInUrl="/sign-in"
-              afterSignUpUrl="/dashboard"
+              fallbackRedirectUrl="/dashboard"
             />
 
             <div className="text-center mt-6 lg:hidden">

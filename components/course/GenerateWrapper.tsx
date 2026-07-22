@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { SubmitButton } from "./SubmitButton";
+import { SubmitButton } from "@/components/shared/SubmitButton";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 
 interface GenerateWrapperProps {
     action: () => Promise<any>;

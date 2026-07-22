@@ -2,13 +2,14 @@
 
 import { useMemo } from "react";
 import { Activity, Clock, Target } from "lucide-react";
+import type { UserCourseWithChapters, UserDb } from "@/lib/db/drizzle.types";
 
 export default function DashboardStats({
     userCourses,
     userDb,
 }: {
-    userCourses: any[];
-    userDb: any;
+    userCourses: UserCourseWithChapters[];
+    userDb: UserDb | undefined;
 }) {
     // 1. Calculate accuracy per topic
     const accuracyPerTopic = useMemo(() => {
@@ -16,8 +17,8 @@ export default function DashboardStats({
             let totalQuizzes = 0;
             let totalScore = 0;
 
-            course.chapters?.forEach((chapter: any) => {
-                chapter.quizzes?.forEach((quiz: any) => {
+            course.chapters?.forEach((chapter) => {
+                chapter.quizzes?.forEach((quiz) => {
                     if (quiz.isCompleted && quiz.score !== null) {
                         totalQuizzes++;
                         totalScore += quiz.score;
@@ -39,7 +40,7 @@ export default function DashboardStats({
     }, [userCourses]);
 
     // 2. Format Activity Map for Heatmap (last 30 days for simplicity)
-    const activityMap = userDb?.activityMap || {};
+    const activityMap = (userDb?.activityMap as Record<string, number>) || {};
     const heatmapDays = useMemo(() => {
         const days = [];
         const today = new Date();
@@ -111,7 +112,7 @@ export default function DashboardStats({
                                 <span className="font-medium text-muted-foreground shrink-0">
                                     {course.timeSpent > 0
                                         ? `${Math.round(course.timeSpent / 60)} min`
-                                        : `${(course.chapters?.filter((c: any) => c.isCompleted).length || 0) * 5} min (est)`}
+                                        : `${(course.chapters?.filter((c) => c.isCompleted).length || 0) * 5} min (est)`}
                                 </span>
                             </div>
                         ))

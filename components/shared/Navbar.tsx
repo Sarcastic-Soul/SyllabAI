@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Show, UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
-import NavItems from "@/components/NavItems";
+import NavItems from "@/components/shared/NavItems";
+import MobileMenu from "@/components/shared/MobileMenu";
 
 const Navbar = async () => {
   // Check the user's plan via Clerk's auth helper
@@ -19,14 +20,16 @@ const Navbar = async () => {
         </div>
       </Link>
 
-      <div className="flex items-center gap-8">
-        {/* Safely imports the separate NavItems component now! */}
-        <NavItems />
+      <div className="flex items-center gap-4 md:gap-8">
+        {/* Hide inline NavItems on small screens */}
+        <div className="hidden md:block">
+          <NavItems />
+        </div>
 
         <Show when="signed-in">
           <div className="flex items-center gap-4">
             {/* Plan Badge */}
-            <Link href="/subscription">
+            <Link href="/subscription" className="hidden sm:block">
               <span
                 className={`px-3 py-1 text-xs font-semibold rounded-full border cursor-pointer hover:opacity-80 transition-opacity ${
                   isPro
@@ -38,7 +41,10 @@ const Navbar = async () => {
               </span>
             </Link>
 
-            <UserButton afterSignOutUrl="/" />
+            <UserButton />
+            
+            {/* Mobile hamburger menu */}
+            <MobileMenu />
           </div>
         </Show>
       </div>

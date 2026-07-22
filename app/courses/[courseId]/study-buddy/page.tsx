@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { courses } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import StudyBuddyInteractive from "@/components/StudyBuddyInteractive";
+import StudyBuddyInteractive from "@/components/study-buddy/StudyBuddyInteractive";
 
 interface StudyBuddyPageProps {
   params: Promise<{ courseId: string }>;
@@ -33,9 +33,9 @@ const StudyBuddyPage = async ({ params }: StudyBuddyPageProps) => {
   return (
     <div className="bg-background">
       <StudyBuddyInteractive
-        courseId={course.id}
         courseTopic={course.topic}
         courseStructure={courseStructureString}
+        courseId={course.id}
       />
     </div>
   );

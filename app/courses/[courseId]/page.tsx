@@ -1,6 +1,4 @@
-import { db } from "@/lib/db";
-import { courses, chapters } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { getCourseWithChapters } from "@/lib/queries";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -15,12 +13,13 @@ import {
 } from "lucide-react";
 import { toggleChapterBookmark } from "@/lib/actions/chapter.actions";
 import { generateCourseCheatSheet } from "@/lib/actions/course.actions";
-import StudyBuddy from "@/components/StudyBuddy";
-import DeleteCourseButton from "@/components/DeleteCourseButton";
-import ExportCourseButtons from "@/components/ExportCourseButtons";
-import { SubmitButton } from "@/components/SubmitButton";
+import DeleteCourseButton from "@/components/course/DeleteCourseButton";
+import ExportCourseButtons from "@/components/course/ExportCourseButtons";
+import { SubmitButton } from "@/components/shared/SubmitButton";
 import ReactMarkdown from "react-markdown";
-import GenerateWrapper from "@/components/GenerateWrapper";
+import GenerateWrapper from "@/components/course/GenerateWrapper";
+import CheatSheetExportButtons from "@/components/course/CheatSheetExportButtons";
+import ShareCourseButton from "@/components/course/ShareCourseButton";
 
 interface CoursePageProps {
     params: Promise<{
@@ -31,17 +30,7 @@ interface CoursePageProps {
 const CourseDashboard = async ({ params }: CoursePageProps) => {
     const { courseId } = await params;
 
-    const course = await db.query.courses.findFirst({
-        where: eq(courses.id, courseId),
-        with: {
-            chapters: {
-                orderBy: (chapters, { asc }) => [asc(chapters.order)],
-                with: {
-                    quizzes: true,
-                },
-            },
-        },
-    });
+    const course = await getCourseWithChapters(courseId);
 
     if (!course) notFound();
 
@@ -87,6 +76,11 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
                         {course.topic}
                     </h1>
                     <div className="flex items-center gap-3 flex-wrap">
+                        <ShareCourseButton
+                            courseId={course.id}
+                            isPublic={course.isPublic}
+                            shareSlug={course.shareSlug}
+                        />
                         <ExportCourseButtons
                             course={course}
                             chapters={course.chapters}
@@ -280,10 +274,13 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
                             icon={<Sparkles className="w-4 h-4 mr-2" />}
                         />
                     )}
+                    {course.cheatSheet && (
+                        <CheatSheetExportButtons content={course.cheatSheet} courseTopic={course.topic} />
+                    )}
                 </div>
                 
                 {course.cheatSheet ? (
-                    <div className="prose prose-slate dark:prose-invert max-w-none bg-secondary/10 p-6 rounded-xl border border-secondary">
+                    <div id="cheat-sheet-content" className="prose prose-slate dark:prose-invert max-w-none bg-secondary/10 p-6 rounded-xl border border-secondary">
                         <ReactMarkdown>{course.cheatSheet}</ReactMarkdown>
                     </div>
                 ) : (

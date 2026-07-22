@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { courses, chapters, users, quizzes } from "@/lib/db/schema";
+import { courses, chapters, users, quizzes, documents, documentChunks } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { revalidatePath } from "next/cache";
@@ -9,13 +9,17 @@ import { eq, sql } from "drizzle-orm";
 import { PDFParse } from "pdf-parse";
 
 // Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-interface CreateCourseParams {
-    topic: string;
-    duration: number;
-    difficulty: string;
-}
+import { z } from "zod";
+
+const createCourseSchema = z.object({
+    topic: z.string().min(2, "Topic must be at least 2 characters").max(100),
+    duration: z.number().min(1).max(20),
+    difficulty: z.enum(["Beginner", "Intermediate", "Advanced", "beginner", "intermediate", "advanced"]),
+});
+
+type CreateCourseParams = z.infer<typeof createCourseSchema>;
 
 async function saveCourseToDatabase(params: {
     userId: string;
@@ -84,7 +88,8 @@ export async function generateCourse(params: CreateCourseParams) {
             }
         }
 
-        const { topic, duration, difficulty } = params;
+        const validatedParams = createCourseSchema.parse(params);
+        const { topic, duration, difficulty } = validatedParams;
 
         const prompt = `
       Create a comprehensive lesson on the topic: "${topic}".
@@ -190,16 +195,40 @@ export async function generateCourseFromPDF(formData: FormData) {
             );
         }
 
+        const { chunkText } = await import("@/lib/utils/chunker");
+        
+        // 1. Chunking
+        const ragChunks = chunkText(documentText, 4000, 200);
+        const summaryChunks = chunkText(documentText, 25000, 500);
+
+        // 2. Map Phase: Generate an outline from large chunks
+        const summarizerModel = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+        const mapPrompt = "Extract the main topics, sub-topics, and key structural elements from this text segment to help build a course syllabus. Be concise, use bullet points.";
+        
+        const chunksToSummarize = summaryChunks.slice(0, 5); // Up to ~125,000 characters to avoid huge payloads
+        const chunkSummaries = await Promise.all(
+            chunksToSummarize.map(async (c) => {
+                 try {
+                     const res = await summarizerModel.generateContent(mapPrompt + "\n\n" + c);
+                     return res.response.text();
+                 } catch (e) {
+                     return ""; // Fallback gracefully if one chunk fails
+                 }
+            })
+        );
+        const outlineContext = chunkSummaries.join("\n\n");
+
+        // 3. Reduce Phase: Generate syllabus
         const prompt = `
-      You are an expert curriculum designer. Create a highly structured course syllabus STRICTLY based on the provided document text.
+      You are an expert curriculum designer. Create a highly structured course syllabus STRICTLY based on the provided document outline.
       Difficulty Level: ${difficulty}
       Number of Chapters/Modules: ${duration}
 
-      Source Document Text:
-      ${documentText.substring(0, 50000)}
+      Source Document Outline:
+      ${outlineContext}
 
       CRITICAL: You must ALWAYS respond with a valid JSON array of objects. Each object must have a "title" and "content".
-      Your primary goal is to write rich, engaging, text-based educational content derived ONLY from the source text above.
+      Your primary goal is to write rich, engaging, text-based educational content derived ONLY from the source text outline above.
     `;
 
         const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
@@ -240,6 +269,43 @@ export async function generateCourseFromPDF(formData: FormData) {
             difficulty,
             syllabus,
         });
+
+        // 4. Save document and generate/save embeddings for RAG
+        const [newDoc] = await db.insert(documents).values({
+            courseId: newCourse.id,
+            filename: file.name,
+        }).returning();
+
+        // Batch embed chunks with concurrency limiter for ~5x speedup
+        const { pLimit } = await import("@/lib/utils/concurrency");
+        const limit = pLimit(5);
+        const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+        
+        const embeddingResults = await Promise.all(
+            ragChunks.map((content) =>
+                limit(async () => {
+                    try {
+                        const res = await embedModel.embedContent(content);
+                        return {
+                            documentId: newDoc.id,
+                            content: content,
+                            embedding: res.embedding.values,
+                        };
+                    } catch (err) {
+                        console.error("Failed to embed chunk:", err);
+                        return null;
+                    }
+                })
+            )
+        );
+
+        const chunksToInsert = embeddingResults.filter(
+            (r): r is NonNullable<typeof r> => r !== null
+        );
+
+        if (chunksToInsert.length > 0) {
+            await db.insert(documentChunks).values(chunksToInsert);
+        }
 
         return newCourse.id; // Kept returning ID here to match your original implementation
     } catch (error: any) {
@@ -332,5 +398,44 @@ export async function generateCourseCheatSheet(courseId: string) {
     } catch (error) {
         console.error("Error generating cheat sheet:", error);
         throw new Error("Failed to generate cheat sheet");
+    }
+}
+
+export async function toggleCoursePublic(courseId: string) {
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
+
+        const course = await db.query.courses.findFirst({
+            where: eq(courses.id, courseId),
+        });
+
+        if (!course || course.author !== userId) {
+            throw new Error("Unauthorized or course not found");
+        }
+
+        const newIsPublic = !course.isPublic;
+        const newSlug = newIsPublic
+            ? crypto.randomUUID().replace(/-/g, "").slice(0, 8)
+            : null;
+
+        await db
+            .update(courses)
+            .set({
+                isPublic: newIsPublic,
+                shareSlug: newSlug,
+            })
+            .where(eq(courses.id, courseId));
+
+        revalidatePath(`/courses/${courseId}`);
+
+        return {
+            success: true,
+            isPublic: newIsPublic,
+            shareSlug: newSlug,
+        };
+    } catch (error) {
+        console.error("Error toggling course visibility:", error);
+        throw new Error("Failed to update sharing settings");
     }
 }

@@ -1,13 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { chapters, users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { chapters, users, documents, documentChunks } from "@/lib/db/schema";
+import { eq, sql, cosineDistance, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { auth } from "@clerk/nextjs/server";
 
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function markChapterComplete(chapterId: string, courseId: string) {
     try {
@@ -101,20 +101,52 @@ export async function generateChapterLesson(
     chapterTitle: string,
 ) {
     try {
+        const chapter = await db.query.chapters.findFirst({
+            where: eq(chapters.id, chapterId),
+        });
+        if (!chapter) throw new Error("Chapter not found");
+
         // Set placeholder state to prevent duplicate submissions on refresh
         await db
             .update(chapters)
             .set({ lessonText: "GENERATING" })
             .where(eq(chapters.id, chapterId));
 
+        let contextText = "";
+        try {
+            const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+            const embeddingResult = await embedModel.embedContent(`Course: ${courseTopic}. Chapter: ${chapterTitle}`);
+            const queryVector = embeddingResult.embedding.values;
+
+            const similarChunks = await db
+                .select({
+                    content: documentChunks.content,
+                    similarity: sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryVector)})`
+                })
+                .from(documentChunks)
+                .innerJoin(documents, eq(documents.id, documentChunks.documentId))
+                .where(eq(documents.courseId, chapter.courseId))
+                .orderBy(t => desc(t.similarity))
+                .limit(5);
+
+            if (similarChunks.length > 0) {
+                contextText = "Relevant Source Document Context:\n" + similarChunks.map(c => c.content).join("\n\n");
+            }
+        } catch (e) {
+            console.error("Vector search failed, proceeding without RAG context", e);
+        }
+
         const prompt = `
             You are an expert tutor writing a comprehensive educational lesson.
             Course Subject: ${courseTopic}
             Current Chapter: ${chapterTitle}
 
+            ${contextText ? contextText : ""}
+
             Write a highly detailed, engaging, and easy-to-understand lesson for this chapter.
             Use Markdown formatting (headings, bullet points, bold text).
             Include real-world examples, analogies, and a brief summary at the end.
+            If context is provided above, use it as the primary source of truth.
             Do NOT include the chapter title as an H1, just start directly with the content.
         `;
 

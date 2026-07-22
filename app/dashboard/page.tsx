@@ -1,12 +1,11 @@
-import { db } from "@/lib/db";
-import { courses, users } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
-import { eq, desc } from "drizzle-orm";
+import { cookies } from "next/headers";
+import { getUserCourses, getUserDb } from "@/lib/queries";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import DashboardClient from "@/components/DashboardClient";
-import DashboardStats from "@/components/DashboardStats";
+import DashboardClient from "@/components/dashboard/DashboardClient";
+import DashboardStats from "@/components/dashboard/DashboardStats";
 import { syncUserToDatabase } from "@/lib/actions/syncUser";
 
 const Dashboard = async () => {
@@ -16,28 +15,21 @@ const Dashboard = async () => {
         return <div>Please sign in to view your dashboard.</div>;
     }
 
-    await syncUserToDatabase();
+    const cookieStore = await cookies();
+    const hasSynced = cookieStore.get("user_synced");
 
-    const userDb = await db.query.users.findFirst({
-        where: eq(users.id, userId),
-    });
+    if (!hasSynced) {
+        await syncUserToDatabase();
+    }
+
+    const userDb = await getUserDb(userId);
 
     // Fetch the user's generated courses
-    const userCourses = await db.query.courses.findMany({
-        where: eq(courses.author, userId),
-        orderBy: [desc(courses.createdAt)],
-        with: {
-            chapters: {
-                with: {
-                    quizzes: true,
-                },
-            },
-        },
-    });
+    const userCourses = await getUserCourses(userId);
 
     return (
         <div className="max-w-6xl mx-auto p-6 space-y-8">
-            <div className="flex items-center justify-between border-b pb-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b pb-6 gap-4">
                 <div>
                     <h1 className="text-4xl font-bold">My Courses</h1>
                     <p className="text-muted-foreground mt-1">
