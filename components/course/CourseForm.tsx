@@ -27,7 +27,7 @@ export default function CourseForm() {
   // Topic State
   const [topic, setTopic] = useState("");
   const [duration, setDuration] = useState("5");
-  const [difficulty, setDifficulty] = useState("Beginner");
+  const [difficulty, setDifficulty] = useState<"Beginner" | "Intermediate" | "Advanced">("Beginner");
 
   // PDF State
   const [file, setFile] = useState<File | null>(null);
@@ -113,7 +113,7 @@ export default function CourseForm() {
                 <Label>Difficulty</Label>
                 <Select
                   value={difficulty}
-                  onValueChange={setDifficulty}
+                  onValueChange={(val) => setDifficulty(val as any)}
                   disabled={loading}
                 >
                   <SelectTrigger>
@@ -192,7 +192,7 @@ export default function CourseForm() {
                 <Label>Difficulty</Label>
                 <Select
                   value={difficulty}
-                  onValueChange={setDifficulty}
+                  onValueChange={(val) => setDifficulty(val as any)}
                   disabled={loading}
                 >
                   <SelectTrigger>

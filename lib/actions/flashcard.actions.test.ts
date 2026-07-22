@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateSM2 } from "./flashcard.actions";
+import { calculateSM2 } from "../utils/sm2";
 
 describe("calculateSM2", () => {
   it("should increase interval and ease factor on a perfect score (3)", () => {
