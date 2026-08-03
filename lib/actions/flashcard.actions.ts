@@ -1,50 +1,70 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { flashcards } from "@/lib/db/schema";
-import { eq, lte } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { flashcards, chapters, courses } from "@/lib/db/schema";
+import { eq, and, or } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { calculateSM2 } from "@/lib/utils/sm2";
+import { flashcardReviewSchema, flashcardQuerySchema } from "@/lib/validations";
+import { trackEvent } from "@/lib/analytics";
+
 /**
- * Fetch flashcards that are due for review (nextReviewAt <= now).
- * If none are due, returns an empty array.
+ * Fetch flashcards that are due for review (nextReviewAt <= now), with ownership verification.
  */
 export async function getFlashcardsDueForReview(chapterId: string) {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
+    const validated = flashcardQuerySchema.parse({ chapterId });
+
+    // Verify row-level access (chapter belongs to a course authored by user or is public)
+    const chapter = await db.query.chapters.findFirst({
+        where: eq(chapters.id, validated.chapterId),
+        with: { course: true },
+    });
+
+    if (!chapter || (chapter.course.author !== userId && !chapter.course.isPublic)) {
+        throw new Error("Unauthorized access to flashcards");
+    }
+
     const now = new Date();
     const dueCards = await db
         .select()
         .from(flashcards)
-        .where(eq(flashcards.chapterId, chapterId))
+        .where(eq(flashcards.chapterId, validated.chapterId))
         .orderBy(flashcards.nextReviewAt);
 
-    // Filter due cards (nextReviewAt <= now) and not-yet-reviewed cards
     return dueCards.filter((card) => new Date(card.nextReviewAt) <= now);
 }
 
 /**
- * Get all flashcards for a chapter (regardless of review status).
+ * Get all flashcards for a chapter, with user ownership verification.
  */
 export async function getAllFlashcards(chapterId: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    const validated = flashcardQuerySchema.parse({ chapterId });
+
+    // Verify row-level access
+    const chapter = await db.query.chapters.findFirst({
+        where: eq(chapters.id, validated.chapterId),
+        with: { course: true },
+    });
+
+    if (!chapter || (chapter.course.author !== userId && !chapter.course.isPublic)) {
+        throw new Error("Unauthorized access to flashcards");
+    }
+
     return db
         .select()
         .from(flashcards)
-        .where(eq(flashcards.chapterId, chapterId))
+        .where(eq(flashcards.chapterId, validated.chapterId))
         .orderBy(flashcards.nextReviewAt);
 }
 
 /**
- * SM-2 Spaced Repetition Algorithm
- *
- * Quality ratings:
- *   0 = "Again" (complete blackout)
- *   1 = "Hard" (incorrect, but remembered after seeing answer)
- *   2 = "Good" (correct with some hesitation)
- *   3 = "Easy" (correct with perfect recall)
- *
+ * SM-2 Spaced Repetition Review with full input validation and authorization.
  */
 export async function reviewFlashcard(
     flashcardId: string,
@@ -53,17 +73,34 @@ export async function reviewFlashcard(
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
+    const validated = flashcardReviewSchema.parse({ flashcardId, quality });
+
     const card = await db.query.flashcards.findFirst({
-        where: eq(flashcards.id, flashcardId),
+        where: eq(flashcards.id, validated.flashcardId),
+        with: {
+            chapter: {
+                with: {
+                    course: true,
+                },
+            },
+        },
     });
 
     if (!card) throw new Error("Flashcard not found");
 
-    const { easeFactor: newEaseFactor, interval: newInterval } = calculateSM2(quality, card.easeFactor, card.interval);
+    // Row-level ownership check
+    if (card.chapter.course.author !== userId) {
+        throw new Error("Unauthorized: You do not own this flashcard");
+    }
 
-    // Calculate next review date
+    const { easeFactor: newEaseFactor, interval: newInterval } = calculateSM2(
+        validated.quality,
+        card.easeFactor,
+        card.interval
+    );
+
     const nextReview = new Date();
-    if (newInterval === 1 && quality < 2) {
+    if (newInterval === 1 && validated.quality < 2) {
         nextReview.setMinutes(nextReview.getMinutes() + 10);
     } else {
         nextReview.setDate(nextReview.getDate() + newInterval);
@@ -76,7 +113,14 @@ export async function reviewFlashcard(
             interval: newInterval,
             nextReviewAt: nextReview,
         })
-        .where(eq(flashcards.id, flashcardId));
+        .where(eq(flashcards.id, validated.flashcardId));
+
+    await trackEvent(userId, "flashcard_reviewed", {
+        flashcardId: validated.flashcardId,
+        quality: validated.quality,
+        newInterval,
+        newEaseFactor,
+    });
 
     return {
         success: true,

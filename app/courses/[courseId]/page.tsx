@@ -20,6 +20,7 @@ import ReactMarkdown from "react-markdown";
 import GenerateWrapper from "@/components/course/GenerateWrapper";
 import CheatSheetExportButtons from "@/components/course/CheatSheetExportButtons";
 import ShareCourseButton from "@/components/course/ShareCourseButton";
+import AdaptiveMasteryPanel from "@/components/course/AdaptiveMasteryPanel";
 
 interface CoursePageProps {
     params: Promise<{
@@ -166,6 +167,7 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
             <div className="flex flex-col-reverse lg:flex-row gap-8 items-start">
                 {/* Left Side: Chapters List */}
                 <div className="flex-1 space-y-6 w-full">
+                    <AdaptiveMasteryPanel courseId={course.id} />
                     <h2 className="text-2xl font-semibold">Course Content</h2>
 
                     <div className="grid gap-4">

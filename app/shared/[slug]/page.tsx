@@ -4,11 +4,42 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BookOpen, PlayCircle, Lock } from "lucide-react";
 import { SignUpButton } from "@clerk/nextjs";
+import { Metadata } from "next";
 
 interface SharedCoursePageProps {
     params: Promise<{
         slug: string;
     }>;
+}
+
+export async function generateMetadata({ params }: SharedCoursePageProps): Promise<Metadata> {
+    const { slug } = await params;
+    const course = await getCourseBySlug(slug);
+
+    if (!course || !course.isPublic) {
+        return {
+            title: "Course Not Found | SyllabAI",
+        };
+    }
+
+    const title = `${course.topic} (${course.difficulty}) | SyllabAI`;
+    const description = `Study "${course.topic}" on SyllabAI with ${course.chapters.length} interactive modules, AI flashcards, and quizzes.`;
+
+    return {
+        title,
+        description,
+        openGraph: {
+            title,
+            description,
+            type: "article",
+            siteName: "SyllabAI",
+        },
+        twitter: {
+            card: "summary_large_image",
+            title,
+            description,
+        },
+    };
 }
 
 const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {

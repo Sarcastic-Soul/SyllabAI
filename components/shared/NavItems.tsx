@@ -31,6 +31,14 @@ const NavItems = () => {
             My Journey
           </Link>
         </li>
+        <li>
+          <Link
+            href="/admin"
+            className="hover:text-primary transition-colors"
+          >
+            Admin
+          </Link>
+        </li>
       </Show>
     </ul>
   );

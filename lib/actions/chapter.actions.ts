@@ -1,26 +1,50 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { chapters, users, documents, documentChunks } from "@/lib/db/schema";
+import { chapters, users, documents, documentChunks, flashcards } from "@/lib/db/schema";
 import { eq, sql, cosineDistance, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { auth } from "@clerk/nextjs/server";
+import {
+    chapterActionSchema,
+    toggleBookmarkSchema,
+    flashcardQuerySchema,
+} from "@/lib/validations";
+import { withRetry } from "@/lib/utils/retry";
+import { checkRateLimit } from "@/lib/ratelimit";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+/**
+ * Helper to verify user ownership of a chapter via its parent course.
+ */
+async function verifyChapterOwnership(chapterId: string, userId: string) {
+    const chapter = await db.query.chapters.findFirst({
+        where: eq(chapters.id, chapterId),
+        with: { course: true },
+    });
+
+    if (!chapter || chapter.course.author !== userId) {
+        throw new Error("Unauthorized: You do not own this course chapter");
+    }
+
+    return chapter;
+}
 
 export async function markChapterComplete(chapterId: string, courseId: string) {
     try {
         const { userId } = await auth();
         if (!userId) throw new Error("Unauthorized");
 
-        // 1. Mark the chapter as completed
+        const validated = chapterActionSchema.parse({ chapterId, courseId });
+        await verifyChapterOwnership(validated.chapterId, userId);
+
         await db
             .update(chapters)
             .set({ isCompleted: true })
-            .where(eq(chapters.id, chapterId));
+            .where(eq(chapters.id, validated.chapterId));
 
-        // 2. STREAK LOGIC
         const userDb = await db.query.users.findFirst({
             where: eq(users.id, userId),
         });
@@ -32,7 +56,6 @@ export async function markChapterComplete(chapterId: string, courseId: string) {
                 ? new Date(userDb.lastActive).toDateString()
                 : null;
 
-            // Calculate what "yesterday" was
             const yesterday = new Date(now);
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayString = yesterday.toDateString();
@@ -40,15 +63,11 @@ export async function markChapterComplete(chapterId: string, courseId: string) {
             let newStreak = userDb.currentStreak || 0;
 
             if (lastActiveDate === yesterdayString) {
-                // They were active yesterday, streak goes up!
                 newStreak += 1;
             } else if (lastActiveDate !== today) {
-                // They missed a day, streak resets to 1
                 newStreak = 1;
             }
-            // If lastActiveDate === today, the streak stays the same (they already earned it today)
 
-            // Update Activity Map
             const isoDate = now.toISOString().split("T")[0];
             const currentActivityMap =
                 (userDb.activityMap as Record<string, number>) || {};
@@ -67,7 +86,7 @@ export async function markChapterComplete(chapterId: string, courseId: string) {
                 .where(eq(users.id, userId));
         }
 
-        revalidatePath(`/courses/${courseId}/chapters/${chapterId}`);
+        revalidatePath(`/courses/${validated.courseId}/chapters/${validated.chapterId}`);
         revalidatePath(`/profile`);
         return { success: true };
     } catch (error) {
@@ -82,12 +101,22 @@ export async function toggleChapterBookmark(
     currentStatus: boolean,
 ) {
     try {
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
+
+        const validated = toggleBookmarkSchema.parse({
+            chapterId,
+            courseId,
+            currentStatus,
+        });
+        await verifyChapterOwnership(validated.chapterId, userId);
+
         await db
             .update(chapters)
-            .set({ isBookmarked: !currentStatus })
-            .where(eq(chapters.id, chapterId));
+            .set({ isBookmarked: !validated.currentStatus })
+            .where(eq(chapters.id, validated.chapterId));
 
-        revalidatePath(`/courses/${courseId}`);
+        revalidatePath(`/courses/${validated.courseId}`);
         return { success: true };
     } catch (error) {
         console.error("Error toggling bookmark:", error);
@@ -101,12 +130,16 @@ export async function generateChapterLesson(
     chapterTitle: string,
 ) {
     try {
-        const chapter = await db.query.chapters.findFirst({
-            where: eq(chapters.id, chapterId),
-        });
-        if (!chapter) throw new Error("Chapter not found");
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
 
-        // Set placeholder state to prevent duplicate submissions on refresh
+        const rateLimit = await checkRateLimit(userId);
+        if (!rateLimit.success) {
+            throw new Error("RATE_LIMIT_EXCEEDED: You have reached your hourly AI generation limit.");
+        }
+
+        const chapter = await verifyChapterOwnership(chapterId, userId);
+
         await db
             .update(chapters)
             .set({ lessonText: "GENERATING" })
@@ -115,7 +148,9 @@ export async function generateChapterLesson(
         let contextText = "";
         try {
             const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-            const embeddingResult = await embedModel.embedContent(`Course: ${courseTopic}. Chapter: ${chapterTitle}`);
+            const embeddingResult = await withRetry(() =>
+                embedModel.embedContent(`Course: ${courseTopic}. Chapter: ${chapterTitle}`)
+            );
             const queryVector = embeddingResult.embedding.values;
 
             const similarChunks = await db
@@ -150,11 +185,11 @@ export async function generateChapterLesson(
             Do NOT include the chapter title as an H1, just start directly with the content.
         `;
 
+        // High reasoning model for full lesson creation
         const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
-        const result = await model.generateContent(prompt);
+        const result = await withRetry(() => model.generateContent(prompt));
         const lessonContent = result.response.text();
 
-        // Save the generated lesson to the database
         await db
             .update(chapters)
             .set({ lessonText: lessonContent })
@@ -163,15 +198,14 @@ export async function generateChapterLesson(
         revalidatePath(`/courses/[courseId]/chapters/${chapterId}`, "page");
 
         return { success: true, lessonText: lessonContent };
-    } catch (error) {
-        // Revert placeholder state if generation fails
+    } catch (error: any) {
         await db
             .update(chapters)
             .set({ lessonText: null })
             .where(eq(chapters.id, chapterId));
 
         console.error("Error generating lesson:", error);
-        throw new Error("Failed to generate lesson content");
+        throw new Error(error?.message || "Failed to generate lesson content");
     }
 }
 
@@ -184,11 +218,14 @@ export async function generateChapterMermaid(
         const { userId } = await auth();
         if (!userId) throw new Error("Unauthorized");
 
-        const chapter = await db.query.chapters.findFirst({
-            where: eq(chapters.id, chapterId),
-        });
+        const rateLimit = await checkRateLimit(userId);
+        if (!rateLimit.success) {
+            throw new Error("RATE_LIMIT_EXCEEDED: You have reached your hourly AI generation limit.");
+        }
 
-        if (!chapter || !chapter.lessonText) {
+        const chapter = await verifyChapterOwnership(chapterId, userId);
+
+        if (!chapter.lessonText) {
             throw new Error("Chapter lesson text not found");
         }
 
@@ -204,10 +241,9 @@ export async function generateChapterMermaid(
         `;
 
         const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
-        const result = await model.generateContent(prompt);
+        const result = await withRetry(() => model.generateContent(prompt));
         let mermaidContent = result.response.text();
         
-        // Clean up markdown block if present
         mermaidContent = mermaidContent.replace(/```mermaid\n?/i, "").replace(/```/g, "").trim();
 
         await db
@@ -218,9 +254,9 @@ export async function generateChapterMermaid(
         revalidatePath(`/courses/[courseId]/chapters/${chapterId}`, "page");
 
         return { success: true, mermaidDiagram: mermaidContent };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error generating mermaid diagram:", error);
-        throw new Error("Failed to generate mermaid diagram");
+        throw new Error(error?.message || "Failed to generate mermaid diagram");
     }
 }
 
@@ -229,11 +265,15 @@ export async function generateChapterFlashcards(chapterId: string) {
         const { userId } = await auth();
         if (!userId) throw new Error("Unauthorized");
 
-        const chapter = await db.query.chapters.findFirst({
-            where: eq(chapters.id, chapterId),
-        });
+        const rateLimit = await checkRateLimit(userId);
+        if (!rateLimit.success) {
+            throw new Error("RATE_LIMIT_EXCEEDED: You have reached your hourly AI generation limit.");
+        }
 
-        if (!chapter || !chapter.lessonText) {
+        const validated = flashcardQuerySchema.parse({ chapterId });
+        const chapter = await verifyChapterOwnership(validated.chapterId, userId);
+
+        if (!chapter.lessonText) {
             throw new Error("Chapter lesson text not found");
         }
 
@@ -246,11 +286,14 @@ export async function generateChapterFlashcards(chapterId: string) {
             ${chapter.lessonText}
         `;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
-        const result = await model.generateContent({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" },
-        });
+        // Model optimization: Use gemini-3.5-flash-lite for flashcards
+        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
+        const result = await withRetry(() =>
+            model.generateContent({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json" },
+            })
+        );
 
         const responseText = result.response.text();
         let flashcardsData;
@@ -269,21 +312,19 @@ export async function generateChapterFlashcards(chapterId: string) {
             throw new Error("The AI returned an empty flashcard list.");
         }
 
-        // Insert into database
-        const { flashcards } = await import("@/lib/db/schema");
         const flashcardsToInsert = flashcardsData.map((fc: any) => ({
-            chapterId: chapterId,
+            chapterId: validated.chapterId,
             front: fc.front,
             back: fc.back,
         }));
 
         await db.insert(flashcards).values(flashcardsToInsert);
 
-        revalidatePath(`/courses/[courseId]/chapters/${chapterId}`, "page");
+        revalidatePath(`/courses/[courseId]/chapters/${validated.chapterId}`, "page");
 
         return { success: true, flashcards: flashcardsToInsert };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error generating flashcards:", error);
-        throw new Error("Failed to generate flashcards");
+        throw new Error(error?.message || "Failed to generate flashcards");
     }
 }

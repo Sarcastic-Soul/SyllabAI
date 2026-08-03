@@ -44,7 +44,7 @@ const Dashboard = async () => {
                 </Link>
             </div>
 
-            <DashboardStats userCourses={userCourses} userDb={userDb} />
+            <DashboardStats userCourses={userCourses} userDb={userDb || undefined} />
 
             {userCourses.length === 0 ? (
                 <div className="text-center py-20 text-muted-foreground border rounded-xl bg-card">

@@ -2,25 +2,41 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { db } from "@/lib/db";
-import { documentChunks, documents, studyBuddyMessages } from "@/lib/db/schema";
+import { documentChunks, documents, studyBuddyMessages, courses } from "@/lib/db/schema";
 import { eq, sql, cosineDistance, desc, and, asc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
+import {
+  askStudyBuddySchema,
+  studyBuddyCourseQuerySchema,
+} from "@/lib/validations";
+import { withRetry } from "@/lib/utils/retry";
+import { checkRateLimit } from "@/lib/ratelimit";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 /**
- * Fetch full conversation history for a course (for UI scroll-back).
+ * Fetch full conversation history for a course with row-level ownership/access checks.
  */
 export async function getConversationHistory(courseId: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
+
+  const validated = studyBuddyCourseQuerySchema.parse({ courseId });
+
+  const course = await db.query.courses.findFirst({
+    where: eq(courses.id, validated.courseId),
+  });
+
+  if (!course || (course.author !== userId && !course.isPublic)) {
+    throw new Error("Unauthorized access to conversation history");
+  }
 
   return db
     .select()
     .from(studyBuddyMessages)
     .where(
       and(
-        eq(studyBuddyMessages.courseId, courseId),
+        eq(studyBuddyMessages.courseId, validated.courseId),
         eq(studyBuddyMessages.userId, userId),
       )
     )
@@ -34,11 +50,21 @@ export async function clearConversationHistory(courseId: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
+  const validated = studyBuddyCourseQuerySchema.parse({ courseId });
+
+  const course = await db.query.courses.findFirst({
+    where: eq(courses.id, validated.courseId),
+  });
+
+  if (!course || course.author !== userId) {
+    throw new Error("Unauthorized: You do not own this course");
+  }
+
   await db
     .delete(studyBuddyMessages)
     .where(
       and(
-        eq(studyBuddyMessages.courseId, courseId),
+        eq(studyBuddyMessages.courseId, validated.courseId),
         eq(studyBuddyMessages.userId, userId),
       )
     );
@@ -47,12 +73,7 @@ export async function clearConversationHistory(courseId: string) {
 }
 
 /**
- * Ask the Study Buddy a question with:
- * - Conversation memory (last 5 messages from DB)
- * - RAG context (top 3 chunks, reduced from 5 for Flash Lite)
- * - Course structure context
- *
- * Both user message and AI response are persisted to the database.
+ * Ask the Study Buddy a question with rate-limiting, withRetry, and Gemini Flash Lite optimization.
  */
 export async function askStudyBuddy(
   question: string,
@@ -64,107 +85,123 @@ export async function askStudyBuddy(
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    // 1. Save the user's message to DB
-    if (courseId) {
+    const rateLimit = await checkRateLimit(userId);
+    if (!rateLimit.success) {
+      throw new Error("RATE_LIMIT_EXCEEDED: You have reached your hourly AI message limit.");
+    }
+
+    const validated = askStudyBuddySchema.parse({
+      question,
+      courseTopic,
+      courseStructure,
+      courseId,
+    });
+
+    if (validated.courseId) {
+      const course = await db.query.courses.findFirst({
+        where: eq(courses.id, validated.courseId),
+      });
+
+      if (!course || (course.author !== userId && !course.isPublic)) {
+        throw new Error("Unauthorized access to course Study Buddy");
+      }
+
       await db.insert(studyBuddyMessages).values({
-        courseId,
+        courseId: validated.courseId,
         userId,
         role: "user",
-        content: question,
+        content: validated.question,
       });
     }
 
-    // 2. Load recent conversation history (last 5 messages for context budget)
     let conversationContext = "";
-    if (courseId) {
+    if (validated.courseId) {
       const recentMessages = await db
         .select()
         .from(studyBuddyMessages)
         .where(
           and(
-            eq(studyBuddyMessages.courseId, courseId),
+            eq(studyBuddyMessages.courseId, validated.courseId),
             eq(studyBuddyMessages.userId, userId),
           )
         )
         .orderBy(desc(studyBuddyMessages.createdAt))
         .limit(5);
 
-      // Reverse to chronological order
       const chronological = recentMessages.reverse();
 
       if (chronological.length > 1) {
-        // Exclude the current question (already in prompt)
         const priorMessages = chronological.slice(0, -1);
         conversationContext = "Recent Conversation:\n" +
           priorMessages
             .map((m) => `${m.role === "user" ? "Student" : "Tutor"}: ${m.content}`)
-            .join("\n");
+            .join("\n") + "\n\n";
       }
     }
 
-    // 3. RAG Vector Search (reduced to 3 chunks for Flash Lite context budget)
-    let contextText = "";
-    if (courseId) {
+    let ragContext = "";
+    if (validated.courseId) {
       try {
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-        const embeddingResult = await embedModel.embedContent(question);
+        const embeddingResult = await withRetry(() => embedModel.embedContent(validated.question));
         const queryVector = embeddingResult.embedding.values;
 
         const similarChunks = await db
           .select({
             content: documentChunks.content,
-            similarity: sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryVector)})`
+            similarity: sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryVector)})`,
           })
           .from(documentChunks)
           .innerJoin(documents, eq(documents.id, documentChunks.documentId))
-          .where(eq(documents.courseId, courseId))
-          .orderBy(t => desc(t.similarity))
-          .limit(3); // Reduced from 5 for Flash Lite
+          .where(eq(documents.courseId, validated.courseId))
+          .orderBy((t) => desc(t.similarity))
+          .limit(3);
 
         if (similarChunks.length > 0) {
-          contextText = "Relevant Source Document Context:\n" + similarChunks.map(c => c.content).join("\n\n");
+          ragContext =
+            "Relevant Course Document Context:\n" +
+            similarChunks.map((c) => c.content).join("\n---\n") +
+            "\n\n";
         }
-      } catch (e) {
-        // Silently proceed without RAG if vector search fails
+      } catch (ragError) {
+        console.warn("Study Buddy RAG search failed (proceeding without RAG context):", ragError);
       }
     }
 
-    // 4. Build prompt with context budget in mind (~3500 tokens)
-    const prompt = `
-            You are "Study Buddy", a friendly, encouraging AI voice tutor helping a student learn about ${courseTopic}.
-            You act as their ultimate "Doubt Clearer".
+    const systemPrompt = `You are "SyllabAI Study Buddy", an encouraging, knowledgeable AI tutor.
+You help students master their course material through clear explanations, analogies, and practice hints.
+Be concise, clear, and supportive. Use markdown formatting for readability.
 
-            Here is the structure of the course they are taking:
-            ${courseStructure}
+Course Topic: ${validated.courseTopic}
+Course Structure Overview:
+${validated.courseStructure}
 
-            ${conversationContext ? conversationContext : ""}
-
-            ${contextText ? contextText : ""}
-
-            Student asks: "${question}"
-
-            Reply directly to the student based on the context provided (if any). If there's conversation history, acknowledge prior topics naturally.
-            Keep your answers brief, highly conversational, and easy to understand when spoken out loud.
-            DO NOT use Markdown formatting (like **, *, #) because your text will be read directly by a Text-to-Speech engine.
-        `;
+${ragContext}${conversationContext}`;
 
     const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
-    const result = await model.generateContent(prompt);
-    const answer = result.response.text();
 
-    // 5. Save the AI response to DB
-    if (courseId) {
+    const response = await withRetry(() =>
+      model.generateContent({
+        contents: [
+          { role: "user", parts: [{ text: systemPrompt + "\nStudent Question: " + validated.question }] },
+        ],
+      })
+    );
+
+    const reply = response.response.text();
+
+    if (validated.courseId) {
       await db.insert(studyBuddyMessages).values({
-        courseId,
+        courseId: validated.courseId,
         userId,
         role: "ai",
-        content: answer,
+        content: reply,
       });
     }
 
-    return answer;
-  } catch (error) {
-    console.error("Error asking study buddy:", error);
-    throw new Error("Failed to get response");
+    return { answer: reply };
+  } catch (error: any) {
+    console.error("Error in askStudyBuddy:", error);
+    throw new Error(error?.message || "Failed to get response from Study Buddy.");
   }
 }

@@ -211,11 +211,12 @@ export default function StudyBuddyInteractive({
       );
 
       // Append AI Message
+      const aiResponseText = typeof answer === "string" ? answer : answer.answer;
       setConversation((prev) => [
         ...prev,
-        { id: (Date.now() + 1).toString(), role: "ai", text: answer },
+        { id: (Date.now() + 1).toString(), role: "ai", text: aiResponseText },
       ]);
-      speakResponse(answer);
+      speakResponse(aiResponseText);
     } catch (error) {
       setConversation((prev) => [
         ...prev,

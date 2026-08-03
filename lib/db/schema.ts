@@ -8,6 +8,7 @@ import {
     uuid,
     jsonb,
     vector,
+    index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -99,14 +100,23 @@ export const documents = pgTable("documents", {
 });
 
 // 7. Chunks and Embeddings for Documents
-export const documentChunks = pgTable("document_chunks", {
-    id: uuid("id").defaultRandom().primaryKey(),
-    documentId: uuid("document_id")
-        .references(() => documents.id, { onDelete: "cascade" })
-        .notNull(),
-    content: text("content").notNull(),
-    embedding: vector("embedding", { dimensions: 768 }), // Gemini text-embedding-004 has 768 dims
-});
+export const documentChunks = pgTable(
+    "document_chunks",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        documentId: uuid("document_id")
+            .references(() => documents.id, { onDelete: "cascade" })
+            .notNull(),
+        content: text("content").notNull(),
+        embedding: vector("embedding", { dimensions: 768 }), // Gemini text-embedding-004 has 768 dims
+    },
+    (table) => [
+        index("document_chunks_embedding_hnsw_idx").using(
+            "hnsw",
+            table.embedding.op("vector_cosine_ops")
+        ),
+    ]
+);
 
 // 8. Study Buddy Conversation History
 export const studyBuddyMessages = pgTable("study_buddy_messages", {
@@ -179,3 +189,12 @@ export const studyBuddyMessageRelations = relations(studyBuddyMessages, ({ one }
         references: [courses.id],
     }),
 }));
+
+// 9. Analytics Telemetry Events
+export const events = pgTable("events", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    eventType: text("event_type").notNull(), // "course_generated" | "quiz_completed" | "flashcard_reviewed" | "pdf_uploaded"
+    metadata: jsonb("metadata").default({}).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});

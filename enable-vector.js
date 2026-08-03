@@ -57,6 +57,11 @@ function main() {
                 case 1:
                     _a.sent();
                     console.log('Vector extension enabled.');
+                    console.log('Creating HNSW vector index...');
+                    return [4 /*yield*/, sql(templateObject_2 || (templateObject_2 = __makeTemplateObject(["CREATE INDEX IF NOT EXISTS document_chunks_embedding_hnsw_idx ON document_chunks USING hnsw (embedding vector_cosine_ops);"], ["CREATE INDEX IF NOT EXISTS document_chunks_embedding_hnsw_idx ON document_chunks USING hnsw (embedding vector_cosine_ops);"])))];
+                case 2:
+                    _a.sent();
+                    console.log('HNSW vector index ensured.');
                     return [2 /*return*/];
             }
         });
@@ -64,3 +69,4 @@ function main() {
 }
 main().catch(console.error);
 var templateObject_1;
+var templateObject_2;
