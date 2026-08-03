@@ -24,7 +24,7 @@ export default function AnimatedBackground() {
 
       {/* Grid Pattern overlay for depth */}
       <div 
-        className="absolute inset-0 opacity-[0.04] dark:opacity-[0.08] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] dark:bg-[radial-gradient(#fff_1.5px,transparent_1.5px)]"
+        className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(#000_1.5px,transparent_1.5px)]"
         style={{ backgroundSize: "28px 28px" }}
       />
 

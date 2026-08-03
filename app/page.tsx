@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { GitFork } from "lucide-react";
+import { SiGithub } from "@icons-pack/react-simple-icons";
 import AnimatedBackground from "@/components/landing/AnimatedBackground";
 import GradientMeshBackground from "@/components/landing/GradientMeshBackground";
 import NoiseOverlay from "@/components/landing/NoiseOverlay";
@@ -97,7 +97,7 @@ export default function LandingPage() {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 hover:text-foreground transition-colors font-medium text-xs"
           >
-            <GitFork className="w-3.5 h-3.5" />
+            <SiGithub className="w-3.5 h-3.5" />
             <span>GitHub Repository</span>
           </a>
         </div>

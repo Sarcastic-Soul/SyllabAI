@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2, Sparkles, GitFork } from "lucide-react";
+import { ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { SiGithub } from "@icons-pack/react-simple-icons";
 import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { motion } from "motion/react";
 import CursorGlow from "./CursorGlow";
@@ -73,7 +74,7 @@ export default function HeroSection({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full border border-border/80 px-3.5 py-1.5 text-xs font-semibold bg-card/80 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all backdrop-blur-sm shadow-xs group"
             >
-              <GitFork className="w-3.5 h-3.5 text-foreground group-hover:text-primary transition-colors" />
+              <SiGithub className="w-3.5 h-3.5 text-foreground group-hover:text-primary transition-colors" />
               <span>⭐ Star on GitHub</span>
             </a>
           </MagneticButton>

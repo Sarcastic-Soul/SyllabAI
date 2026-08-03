@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight, GitFork } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
+import { SiGithub } from "@icons-pack/react-simple-icons";
 import { motion } from "motion/react";
 
 interface LandingHeaderProps {
@@ -107,7 +108,7 @@ export default function LandingHeader({
                 size="icon"
                 className="h-9 w-9 rounded-full border-border/80 hover:border-primary/40 hover:text-primary transition-colors"
               >
-                <GitFork className="h-4 w-4" />
+                <SiGithub className="h-4 w-4" />
                 <span className="sr-only">GitHub Repository</span>
               </Button>
             </motion.div>
