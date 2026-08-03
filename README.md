@@ -72,17 +72,20 @@ Built with Next.js (App Router), Upstash Redis, BullMQ, Neon PostgreSQL (`pgvect
 - **Decision**: Configured `ioredis` to connect to Upstash Redis TCP protocol (`rediss://...`) with an automatic in-memory TTL Map fallback.
 - **Tradeoff**: Ensures 100% application uptime during local development, testing, or temporary Redis network hiccups without crashing server actions or queue dispatchers.
 
-### 4. Hybrid Map-Reduce & Concurrency Limited Embedding Pipeline
-- **Decision**: Large PDFs are chunked into 25,000-character segments for map-reduce syllabus generation, and RAG chunks are embedded with a 5-worker concurrency limiter (`pLimit(5)`).
-- **Tradeoff**: Balances Gemini API rate limits (15 RPM) against generation speed, resulting in a ~5x speedup during document vector ingestion.
+### 4. Hybrid Map-Reduce & Model Distribution Strategy
+- **Decision**: High-frequency interactive features (quizzes, Study Buddy chat) are routed to `gemini-3.5-flash-lite` (15 RPM / 500 RPD), while core syllabus generation uses `gemini-3.6-flash` (5 RPM / 20 RPD). Document embeddings use concurrency limiting (`pLimit(5)`).
+- **Tradeoff**: Optimizes feature availability across tight free-tier daily request quotas while utilizing Redis response caching to avoid redundant LLM calls.
 
 ---
 
 ## 🚧 Known Scaling Boundaries & Free-Tier Limits
 
-1. **Upstash Redis Free Tier**: Limited to **10,000 commands/day** and 256MB memory. The built-in in-memory fallback handles excess traffic smoothly if daily command limits are reached.
-2. **Neon PostgreSQL Free Tier**: Storage capped at **0.5 GiB** with compute autosuspension after inactivity.
-3. **Google Gemini Free Tier**: `gemini-3.6-flash` rate limit of **15 Requests Per Minute (RPM)** and 1 million Tokens Per Minute (TPM).
+1. **Upstash Redis Free Tier**: Capped at **10,000 commands/day** and 256MB memory. An in-memory TTL fallback automatically handles requests if the Redis command ceiling is reached.
+2. **Neon PostgreSQL Free Tier**: Capped at **0.5 GiB** storage with compute autosuspension.
+3. **Google Gemini Free Tier Limits**:
+   - **Gemini 3.6 Flash**: **5 Req/Min (RPM)** | **250K Tokens/Min** | **20 Req/Day (RPD)** *(Used for primary course generation)*.
+   - **Gemini 3.5 Flash Lite**: **15 Req/Min (RPM)** | **250K Tokens/Min** | **500 Req/Day (RPD)** *(Used for quizzes, flashcards, & Study Buddy chat)*.
+   - **System Protections**: Integrated Upstash Redis response caching, user hourly rate limits (`checkRateLimit`), and exponential backoff retries (`withRetry`) prevent quota exhaustion.
 
 ---
 

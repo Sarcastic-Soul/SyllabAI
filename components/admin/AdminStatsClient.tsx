@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { DailyTrendItem, QuizMetricsSummary, EventTypeDistributionItem } from "@/lib/queries/analytics";
 import { Activity, TrendingUp, Zap, Award, BarChart3, Calendar } from "lucide-react";
+import GeminiQuotaCard from "./GeminiQuotaCard";
 
 interface AdminStatsClientProps {
   data: {
@@ -29,6 +30,9 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
 
   return (
     <div className="space-y-8">
+      {/* Live Gemini Quota Meter & Smart Router Card */}
+      <GeminiQuotaCard />
+
       {/* Metric Summary Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 bg-card border rounded-2xl shadow-xs space-y-2">

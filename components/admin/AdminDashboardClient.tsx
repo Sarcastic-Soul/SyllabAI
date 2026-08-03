@@ -6,6 +6,7 @@ import { Users, BookOpen, Layers, Award, Search, Eye, Lock, Globe, Clock, Sparkl
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import GeminiQuotaCard from "./GeminiQuotaCard";
 
 interface AdminDashboardClientProps {
   stats: PlatformStats;
@@ -36,6 +37,8 @@ export default function AdminDashboardClient({
 
   return (
     <div className="space-y-8">
+      {/* Live Gemini Quota Meter & Smart Router Card */}
+      <GeminiQuotaCard />
       {/* Metrics Overview Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 bg-card border rounded-2xl shadow-xs space-y-2">

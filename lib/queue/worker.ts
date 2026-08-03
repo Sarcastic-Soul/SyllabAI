@@ -13,6 +13,7 @@ import { getRedisClient, getCachedValue, setCachedValue, getCachedEmbedding, set
 import { GenerationJobData, JobProgressState } from "./types";
 import { setJobProgressState } from "./progress";
 import { trackEvent } from "@/lib/analytics";
+import { getSmartGenerativeModel } from "@/lib/quota";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -117,7 +118,12 @@ export async function processTopicJob(jobId: string, data: Extract<GenerationJob
 
   // 2. Generate with Gemini if not cached
   if (!syllabus) {
-    await reportProgress(jobId, 30, "Generating course syllabus with Gemini AI...", "active");
+    const { model, modelName, isFallback } = await getSmartGenerativeModel("gemini-3.6-flash");
+    const modelStepLabel = isFallback
+      ? "Generating course syllabus via Smart Fallback (3.5 Flash Lite)..."
+      : `Generating course syllabus with Gemini AI (${modelName})...`;
+
+    await reportProgress(jobId, 30, modelStepLabel, "active");
 
     const prompt = `
       Create a comprehensive lesson on the topic: "${topic}".
@@ -131,7 +137,6 @@ export async function processTopicJob(jobId: string, data: Extract<GenerationJob
       1. Mermaid Diagrams (\`\`\`mermaid): ONLY use a Mermaid diagram if the specific topic requires visualizing a process flow, hierarchy, or architecture.
     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
     const result = await withRetry(() =>
       model.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -235,7 +240,12 @@ export async function processPdfJob(jobId: string, data: Extract<GenerationJobDa
     );
     const outlineContext = chunkSummaries.join("\n\n");
 
-    await reportProgress(jobId, 60, "Structuring chapters & lesson content...", "active");
+    const { model, modelName, isFallback } = await getSmartGenerativeModel("gemini-3.6-flash");
+    const modelStepLabel = isFallback
+      ? "Structuring chapters via Smart Fallback (3.5 Flash Lite)..."
+      : `Structuring chapters & lesson content (${modelName})...`;
+
+    await reportProgress(jobId, 60, modelStepLabel, "active");
 
     const prompt = `
       You are an expert curriculum designer. Create a highly structured course syllabus STRICTLY based on the provided document outline.
@@ -249,7 +259,6 @@ export async function processPdfJob(jobId: string, data: Extract<GenerationJobDa
       Your primary goal is to write rich, engaging, text-based educational content derived ONLY from the source text outline above.
     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
     const aiResult = await withRetry(() =>
       model.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
