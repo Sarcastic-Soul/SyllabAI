@@ -53,7 +53,7 @@ Built with Next.js (App Router), Upstash Redis, BullMQ, Neon PostgreSQL (`pgvect
 - **Background Job Queue & Real-Time SSE Progress**: Async generation powered by Upstash Redis + BullMQ. No 10-second serverless timeouts on large PDF uploads. Live percentage and step updates streamed via browser-native `EventSource`.
 - **Intelligent Response & Embedding Cache**: Upstash Redis caching layer stores repeated Gemini course syllabi and vector chunk embeddings, providing sub-second demo loads.
 - **SM-2 Adaptive Difficulty Engine**: Analyzes spaced repetition recall metrics (`easeFactor`, `interval`, `nextReviewAt`) to compute retention mastery scores, detect weak concepts, and automatically adjust AI quiz generation difficulty.
-- **Teacher & Admin Analytics Dashboard**: Platform analytics viewable at `/admin` (Course directory) and `/admin/stats` (Recharts interactive charts for DAU, daily course volume, quiz score distributions, and system event telemetry).
+- **Admin Analytics Dashboard**: Platform analytics viewable at `/admin` (Course directory) and `/admin/stats` (Recharts interactive charts for DAU, daily course volume, quiz score distributions, and system event telemetry).
 - **Structured JSON Logging**: Zero-overhead Pino logger writing structured JSON to `stdout` for automatic ingestion into the Vercel Dashboard.
 
 ---
