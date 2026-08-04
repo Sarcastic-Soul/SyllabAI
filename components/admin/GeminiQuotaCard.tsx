@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { QuotaStatusSummary } from "@/lib/quota";
-import { Cpu, ShieldCheck, Zap, AlertTriangle, RefreshCw } from "lucide-react";
+import { Cpu, Zap, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function GeminiQuotaCard() {
@@ -48,26 +48,26 @@ export default function GeminiQuotaCard() {
   const getBadgeStyle = () => {
     switch (quota.healthStatus) {
       case "Optimal":
-        return "bg-emerald-100 text-emerald-800 border-emerald-200";
+        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
       case "Smart Fallback Active":
-        return "bg-amber-100 text-amber-800 border-amber-200";
+        return "bg-amber-500/10 text-amber-500 border-amber-500/20";
       default:
-        return "bg-rose-100 text-rose-800 border-rose-200";
+        return "bg-rose-500/10 text-rose-500 border-rose-500/20";
     }
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-white via-slate-50 to-indigo-50/30 border border-slate-200 rounded-2xl shadow-xs space-y-5">
+    <div className="p-6 bg-card border border-border rounded-2xl shadow-xs space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-xs">
+          <div className="p-2.5 bg-primary/10 text-primary rounded-xl shadow-xs">
             <Cpu className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+            <h3 className="font-bold text-foreground text-base flex items-center gap-2">
               Gemini API Quota & Smart Router
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Live daily allocation meters & smart model degradation protection
             </p>
           </div>
@@ -86,49 +86,49 @@ export default function GeminiQuotaCard() {
       {/* Usage Bars */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
         {/* Gemini 3.6 Flash Bar */}
-        <div className="p-4 bg-white border border-slate-200/80 rounded-xl space-y-2">
+        <div className="p-4 bg-muted/40 border border-border rounded-xl space-y-2">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-800">Gemini 3.6 Flash (Primary)</span>
-            <span className="font-mono font-bold text-indigo-600">
+            <span className="font-semibold text-foreground">Gemini 3.6 Flash (Primary)</span>
+            <span className="font-mono font-bold text-primary">
               {quota.flash36.used} / {quota.flash36.limit} RPD
             </span>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+          <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                quota.flash36.percent >= 90 ? "bg-amber-500" : "bg-indigo-600"
+                quota.flash36.percent >= 90 ? "bg-amber-500" : "bg-primary"
               }`}
               style={{ width: `${quota.flash36.percent}%` }}
             />
           </div>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-muted-foreground">
             5 RPM ceiling • Used for main course syllabus creation
           </p>
         </div>
 
         {/* Gemini 3.5 Flash Lite Bar */}
-        <div className="p-4 bg-white border border-slate-200/80 rounded-xl space-y-2">
+        <div className="p-4 bg-muted/40 border border-border rounded-xl space-y-2">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-800">Gemini 3.5 Flash Lite (High-Vol & Fallback)</span>
-            <span className="font-mono font-bold text-purple-600">
+            <span className="font-semibold text-foreground">Gemini 3.5 Flash Lite (High-Vol & Fallback)</span>
+            <span className="font-mono font-bold text-primary">
               {quota.flash35Lite.used} / {quota.flash35Lite.limit} RPD
             </span>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+          <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
             <div
-              className="bg-purple-600 h-full rounded-full transition-all duration-500"
+              className="bg-primary h-full rounded-full transition-all duration-500"
               style={{ width: `${quota.flash35Lite.percent}%` }}
             />
           </div>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-muted-foreground">
             15 RPM ceiling • Used for quizzes, Study Buddy, & smart fallback
           </p>
         </div>
       </div>
 
       {/* Quota Shielding Note */}
-      <div className="p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-xl flex items-center text-xs text-emerald-900">
-        <Zap className="w-4 h-4 mr-2 text-emerald-600 shrink-0 fill-emerald-600" />
+      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center text-xs text-emerald-500">
+        <Zap className="w-4 h-4 mr-2 text-emerald-500 shrink-0 fill-emerald-500" />
         <span>
           <strong className="font-semibold">Redis Quota Shielding Active:</strong> Repeated topics and PDF requests pull from Upstash Redis cache consuming <strong>0 Gemini API calls</strong>.
         </span>

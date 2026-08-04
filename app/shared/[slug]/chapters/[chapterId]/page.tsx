@@ -3,13 +3,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import MermaidDiagram from "@/components/course/MermaidDiagram";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
 import { SignUpButton } from "@clerk/nextjs";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
+import MermaidDiagram from "@/components/course/MermaidDiagram";
 
 interface SharedChapterPageProps {
     params: Promise<{
@@ -49,55 +45,12 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
                     </span>
                 </div>
                 <h1 className="text-4xl font-bold">{chapter.title}</h1>
-                <div className="text-lg text-muted-foreground">
-                    <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                    >
-                        {chapter.content}
-                    </ReactMarkdown>
-                </div>
+                <MarkdownRenderer content={chapter.content || ""} className="text-lg leading-relaxed" />
             </div>
 
             {/* Lesson Content (Read-Only) */}
             {chapter.lessonText && chapter.lessonText !== "GENERATING" ? (
-                <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl">
-                    <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                        components={{
-                            code({
-                                node,
-                                inline,
-                                className,
-                                children,
-                                ...props
-                            }: any) {
-                                const match = /language-(\w+)/.exec(
-                                    className || "",
-                                );
-                                const codeStr = String(children).replace(
-                                    /\n$/,
-                                    "",
-                                );
-                                if (
-                                    !inline &&
-                                    match &&
-                                    match[1] === "mermaid"
-                                ) {
-                                    return <MermaidDiagram code={codeStr} />;
-                                }
-                                return (
-                                    <code className={className} {...props}>
-                                        {children}
-                                    </code>
-                                );
-                            },
-                        }}
-                    >
-                        {chapter.lessonText}
-                    </ReactMarkdown>
-                </div>
+                <MarkdownRenderer content={chapter.lessonText} />
             ) : (
                 <div className="py-12 text-center text-muted-foreground bg-secondary/10 rounded-xl border border-dashed">
                     <p>Lesson content hasn&apos;t been generated for this chapter yet.</p>

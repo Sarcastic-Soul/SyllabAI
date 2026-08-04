@@ -11,16 +11,12 @@ import {
 import QuizComponent from "@/components/course/QuizComponent";
 import { generateChapterQuiz } from "@/lib/actions/quiz.actions";
 import { SubmitButton } from "@/components/shared/SubmitButton";
-import ReactMarkdown from "react-markdown";
-import MermaidDiagram from "@/components/course/MermaidDiagram";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
 import GeneratingLesson from "@/components/course/GeneratingLesson";
 import { BookOpen, HelpCircle, CheckCircle, Sparkles } from "lucide-react";
 import GenerateWrapper from "@/components/course/GenerateWrapper";
 import FlashcardReview from "@/components/course/FlashcardReview";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
+import MermaidDiagram from "@/components/course/MermaidDiagram";
 
 interface ChapterPageProps {
     params: Promise<{
@@ -95,63 +91,14 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
                     )}
                 </div>
                 <h1 className="text-4xl font-bold">{chapter.title}</h1>
-                <div className="text-lg text-muted-foreground">
-                    <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                    >
-                        {chapter.content}
-                    </ReactMarkdown>
-                </div>
+                <MarkdownRenderer content={chapter.content || ""} className="text-lg leading-relaxed" />
             </div>
 
             <div className="min-h-[300px]">
                 {chapter.lessonText === "GENERATING" ? (
                     <GeneratingLesson />
                 ) : chapter.lessonText ? (
-                    <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl">
-                        <ReactMarkdown
-                            remarkPlugins={[remarkGfm, remarkMath]}
-                            rehypePlugins={[rehypeKatex]}
-                            components={{
-                                code({
-                                    node,
-                                    inline,
-                                    className,
-                                    children,
-                                    ...props
-                                }: any) {
-                                    const match = /language-(\w+)/.exec(
-                                        className || "",
-                                    );
-                                    const codeStr = String(children).replace(
-                                        /\n$/,
-                                        "",
-                                    );
-
-                                    // Intercept Mermaid blocks
-                                    if (
-                                        !inline &&
-                                        match &&
-                                        match[1] === "mermaid"
-                                    ) {
-                                        return (
-                                            <MermaidDiagram code={codeStr} />
-                                        );
-                                    }
-
-                                    // Standard code blocks
-                                    return (
-                                        <code className={className} {...props}>
-                                            {children}
-                                        </code>
-                                    );
-                                },
-                            }}
-                        >
-                            {chapter.lessonText}
-                        </ReactMarkdown>
-                    </div>
+                    <MarkdownRenderer content={chapter.lessonText} />
                 ) : (
                     <div className="py-12 flex flex-col items-center justify-center space-y-4 border rounded-2xl bg-muted/30">
                         <h2 className="text-2xl font-semibold">

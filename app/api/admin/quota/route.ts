@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { getDailyQuotaStatus } from "@/lib/quota";
+
+const ADMIN_EMAIL = "anishisbusy@gmail.com";
 
 export async function GET(req: NextRequest) {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await currentUser();
+
+    const primaryEmail =
+      user?.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
+        ?.emailAddress || user?.emailAddresses[0]?.emailAddress;
+
+    if (!userId || !primaryEmail || primaryEmail.toLowerCase() !== ADMIN_EMAIL) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 403 });
     }
 
     const quota = await getDailyQuotaStatus();

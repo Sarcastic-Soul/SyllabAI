@@ -77,7 +77,12 @@ export async function generateCourseCheatSheet(courseId: string) {
       You are an expert tutor creating a concise, high-yield cheat sheet for a course.
       Course Topic: ${course.topic}
       
-      Based on the following chapter contents, generate a comprehensive cheat sheet summarizing the key concepts, formulas, definitions, and takeaways. Use markdown formatting (headers, bullet points, bold text).
+      Based on the following chapter contents, generate a comprehensive cheat sheet summarizing key concepts, formulas, definitions, key takeaways, and code/diagram examples if relevant. 
+      Format your response with clean markdown formatting:
+      - Use headers (##, ###) to separate sections clearly.
+      - Use markdown bullet points and bold text for key terms.
+      - Use markdown tables for comparisons and cheat sheet reference lists.
+      - Do not include raw string escape sequences like \\n.
       
       Chapter Contents:
       ${chapterTexts.substring(0, 50000)}
@@ -85,7 +90,8 @@ export async function generateCourseCheatSheet(courseId: string) {
 
     const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
     const result = await withRetry(() => model.generateContent(prompt));
-    const cheatSheetContent = result.response.text();
+    let cheatSheetContent = result.response.text();
+    cheatSheetContent = cheatSheetContent.replace(/\\n/g, "\n");
 
     await db
       .update(courses)

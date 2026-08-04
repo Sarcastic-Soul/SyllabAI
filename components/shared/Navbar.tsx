@@ -16,7 +16,14 @@ const Navbar = async () => {
     <nav className="navbar flex justify-between items-center p-4 border-b">
       <Link href="/">
         <div className="flex items-center gap-2.5 cursor-pointer">
-          <Image src="/images/logo.png" alt="logo" width={80} height={50} />
+          <Image
+            src="/images/logo.png"
+            alt="logo"
+            width={80}
+            height={50}
+            style={{ width: "auto" }}
+            priority
+          />
         </div>
       </Link>
 

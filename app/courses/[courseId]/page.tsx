@@ -15,12 +15,11 @@ import { toggleChapterBookmark } from "@/lib/actions/chapter.actions";
 import { generateCourseCheatSheet } from "@/lib/actions/course.actions";
 import DeleteCourseButton from "@/components/course/DeleteCourseButton";
 import ExportCourseButtons from "@/components/course/ExportCourseButtons";
-import { SubmitButton } from "@/components/shared/SubmitButton";
-import ReactMarkdown from "react-markdown";
 import GenerateWrapper from "@/components/course/GenerateWrapper";
 import CheatSheetExportButtons from "@/components/course/CheatSheetExportButtons";
 import ShareCourseButton from "@/components/course/ShareCourseButton";
 import AdaptiveMasteryPanel from "@/components/course/AdaptiveMasteryPanel";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 
 interface CoursePageProps {
     params: Promise<{
@@ -59,14 +58,14 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
             ? Math.round((totalCorrectAnswers / (totalQuizzesTaken * 3)) * 100)
             : 0;
 
-    const courseStructureString = course.chapters
-        .map((c) => `Chapter ${c.order}: ${c.title} - ${c.content}`)
-        .join(" | ");
-
     const generateCheatSheetAction = async () => {
         "use server";
         await generateCourseCheatSheet(course.id);
     };
+
+    const formattedCheatSheet = course.cheatSheet
+        ? course.cheatSheet.replace(/\\n/g, "\n")
+        : null;
 
     return (
         <div className="max-w-6xl mx-auto p-6 space-y-10">
@@ -162,8 +161,7 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
                 </Link>
             </div>
 
-
-            {/* Layout Split: Chapters on Left, Buddy on Right (or Bottom on Mobile) */}
+            {/* Layout Split: Chapters on Left */}
             <div className="flex flex-col-reverse lg:flex-row gap-8 items-start">
                 {/* Left Side: Chapters List */}
                 <div className="flex-1 space-y-6 w-full">
@@ -261,7 +259,7 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
                 </div>
             </div>
 
-            {/* Course Cheat Sheet Section (Moved to bottom) */}
+            {/* Course Cheat Sheet Section */}
             <div className="bg-card border rounded-2xl p-6 md:p-8 space-y-6 mt-8">
                 <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -281,12 +279,14 @@ const CourseDashboard = async ({ params }: CoursePageProps) => {
                     )}
                 </div>
                 
-                {course.cheatSheet ? (
-                    <div id="cheat-sheet-content" className="prose prose-slate dark:prose-invert max-w-none bg-secondary/10 p-6 rounded-xl border border-secondary">
-                        <ReactMarkdown>{course.cheatSheet}</ReactMarkdown>
-                    </div>
+                {formattedCheatSheet ? (
+                    <MarkdownRenderer
+                        content={formattedCheatSheet}
+                        id="cheat-sheet-content"
+                        className="bg-card p-6 md:p-8 rounded-xl border border-border"
+                    />
                 ) : (
-                    <div className="text-center py-8 text-muted-foreground bg-secondary/10 rounded-xl border border-dashed border-secondary">
+                    <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-border">
                         <p>No cheat sheet generated yet. Summarize the course content into a quick reference guide!</p>
                     </div>
                 )}
