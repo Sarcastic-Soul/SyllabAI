@@ -2,6 +2,7 @@ export interface TopicJobData {
   type: "topic";
   userId: string;
   topic: string;
+  description?: string;
   duration: number;
   difficulty: "Beginner" | "Intermediate" | "Advanced";
 }
@@ -9,6 +10,8 @@ export interface TopicJobData {
 export interface PdfJobData {
   type: "pdf";
   userId: string;
+  topic?: string;
+  description?: string;
   filename: string;
   pdfBase64: string; // Base64 encoded PDF buffer
   duration: number;

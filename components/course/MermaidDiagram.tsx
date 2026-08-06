@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { Loader2, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Mermaid is lazy-imported inside the effect to avoid shipping its ~3MB
 // bundle to pages that don't contain any diagrams.
@@ -101,18 +102,21 @@ export default function MermaidDiagram({ code, regenerateAction }: { code: strin
   };
 
   return (
-    <div className="my-8 flex flex-col items-center">
-        <div
-        className="w-full flex justify-center p-6 bg-white border rounded-2xl shadow-sm overflow-x-auto"
-        dangerouslySetInnerHTML={{ __html: svg }}
-        />
-        <button 
-            onClick={downloadPNG}
-            className="mt-4 flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium shadow-sm"
+    <div className="relative my-6 w-full border rounded-2xl bg-white shadow-sm p-6 pt-14 overflow-hidden">
+      <div className="absolute top-3 right-3 z-10 print:hidden">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={downloadPNG}
         >
-            <Download className="w-4 h-4" />
-            Download PNG
-        </button>
+          <Download className="w-4 h-4 mr-2" />
+          Download PNG
+        </Button>
+      </div>
+      <div
+        className="w-full flex justify-center overflow-x-auto"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
     </div>
   );
 }

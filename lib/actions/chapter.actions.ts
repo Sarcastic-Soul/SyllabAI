@@ -13,6 +13,7 @@ import {
 } from "@/lib/validations";
 import { withRetry } from "@/lib/utils/retry";
 import { checkRateLimit } from "@/lib/ratelimit";
+import { getEmbeddingVector } from "@/lib/quota";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -147,25 +148,23 @@ export async function generateChapterLesson(
 
         let contextText = "";
         try {
-            const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-            const embeddingResult = await withRetry(() =>
-                embedModel.embedContent(`Course: ${courseTopic}. Chapter: ${chapterTitle}`)
-            );
-            const queryVector = embeddingResult.embedding.values;
+            const queryVector = await getEmbeddingVector(`Course: ${courseTopic}. Chapter: ${chapterTitle}`);
 
-            const similarChunks = await db
-                .select({
-                    content: documentChunks.content,
-                    similarity: sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryVector)})`
-                })
-                .from(documentChunks)
-                .innerJoin(documents, eq(documents.id, documentChunks.documentId))
-                .where(eq(documents.courseId, chapter.courseId))
-                .orderBy(t => desc(t.similarity))
-                .limit(5);
+            if (queryVector) {
+                const similarChunks = await db
+                    .select({
+                        content: documentChunks.content,
+                        similarity: sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryVector)})`
+                    })
+                    .from(documentChunks)
+                    .innerJoin(documents, eq(documents.id, documentChunks.documentId))
+                    .where(eq(documents.courseId, chapter.courseId))
+                    .orderBy(t => desc(t.similarity))
+                    .limit(5);
 
-            if (similarChunks.length > 0) {
-                contextText = "Relevant Source Document Context:\n" + similarChunks.map(c => c.content).join("\n\n");
+                if (similarChunks.length > 0) {
+                    contextText = "Relevant Source Document Context:\n" + similarChunks.map(c => c.content).join("\n\n");
+                }
             }
         } catch (e) {
             console.error("Vector search failed, proceeding without RAG context", e);
@@ -233,8 +232,12 @@ export async function generateChapterMermaid(
             You are an expert in visual education. Based on the following lesson text for the chapter "${chapterTitle}" in the course "${courseTopic}", generate a SINGLE Mermaid diagram (e.g. flowchart, sequence diagram, state diagram, etc.) that visually explains a key concept from the lesson.
             
             CRITICAL: Return ONLY the raw Mermaid code block. Do NOT include any explanations or markdown outside the code block. Start with \`\`\`mermaid and end with \`\`\`.
-            CRITICAL: The Mermaid syntax MUST be perfectly valid. Do NOT use any HTML tags (like <br>) in node labels. If a node label contains special characters (like parentheses, commas, or brackets), you MUST enclose the label in double quotes (e.g. \`A["Node (Info)"]\` instead of \`A[Node (Info)]\`). Keep node labels concise.
-            CRITICAL: Do NOT include ANY comments (such as // or %%) anywhere in the Mermaid code. Ensure all node relationships are perfectly formatted.
+            CRITICAL SYNTAX RULES:
+            1. All node labels MUST be enclosed in double quotes (e.g., A["Cluster Management Manager"] instead of A[Cluster Management Manager]).
+            2. Do NOT use hyphen dashes (-), square brackets ([]), parentheses (()), or special characters inside unquoted node IDs or node labels.
+            3. Do NOT use HTML tags (like <br>) anywhere.
+            4. Do NOT include any code comments (such as // or %%).
+            5. Ensure all arrows (--> or ---) and node definitions are clean and valid.
 
             Lesson Text:
             ${chapter.lessonText}

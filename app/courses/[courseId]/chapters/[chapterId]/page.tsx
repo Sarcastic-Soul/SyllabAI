@@ -150,9 +150,7 @@ const ChapterPage = async ({ params }: ChapterPageProps) => {
                 <div className="pt-12 border-t">
                     <h2 className="text-2xl font-bold mb-4">Visual Concept</h2>
                     {chapter.mermaidDiagram ? (
-                        <div className="p-4 bg-card border rounded-xl overflow-auto">
-                            <MermaidDiagram code={chapter.mermaidDiagram} regenerateAction={generateMermaidAction} />
-                        </div>
+                        <MermaidDiagram code={chapter.mermaidDiagram} regenerateAction={generateMermaidAction} />
                     ) : (
                         <div className="mt-4 p-6 bg-secondary/20 border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <p className="text-muted-foreground">

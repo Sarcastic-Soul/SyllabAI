@@ -6,6 +6,10 @@ export const createCourseSchema = z.object({
         .min(2, "Topic must be at least 2 characters")
         .max(100, "Topic must be under 100 characters")
         .trim(),
+    description: z
+        .string()
+        .max(1000, "Description must be under 1000 characters")
+        .optional(),
     duration: z
         .number()
         .min(1, "Duration must be at least 1 module/week")

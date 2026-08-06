@@ -131,3 +131,25 @@ export async function getSmartGenerativeModel(
     isFallback: false,
   };
 }
+
+/**
+ * Generates text embedding vector with fallback models (text-embedding-004 -> embedding-001).
+ */
+export async function getEmbeddingVector(text: string): Promise<number[] | null> {
+  if (!text || text.trim().length === 0) return null;
+
+  try {
+    const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    const res = await embedModel.embedContent(text);
+    return res.embedding.values;
+  } catch (err) {
+    try {
+      const fallbackModel = genAI.getGenerativeModel({ model: "embedding-001" });
+      const res = await fallbackModel.embedContent(text);
+      return res.embedding.values;
+    } catch (fallbackErr) {
+      logWarn("Embedding generation skipped: model unavailable or error occurred.");
+      return null;
+    }
+  }
+}

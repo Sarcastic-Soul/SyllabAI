@@ -11,6 +11,7 @@ import {
 } from "@/lib/validations";
 import { withRetry } from "@/lib/utils/retry";
 import { checkRateLimit } from "@/lib/ratelimit";
+import { getEmbeddingVector } from "@/lib/quota";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -142,26 +143,26 @@ export async function askStudyBuddy(
     let ragContext = "";
     if (validated.courseId) {
       try {
-        const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-        const embeddingResult = await withRetry(() => embedModel.embedContent(validated.question));
-        const queryVector = embeddingResult.embedding.values;
+        const queryVector = await getEmbeddingVector(validated.question);
 
-        const similarChunks = await db
-          .select({
-            content: documentChunks.content,
-            similarity: sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryVector)})`,
-          })
-          .from(documentChunks)
-          .innerJoin(documents, eq(documents.id, documentChunks.documentId))
-          .where(eq(documents.courseId, validated.courseId))
-          .orderBy((t) => desc(t.similarity))
-          .limit(3);
+        if (queryVector) {
+          const similarChunks = await db
+            .select({
+              content: documentChunks.content,
+              similarity: sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryVector)})`,
+            })
+            .from(documentChunks)
+            .innerJoin(documents, eq(documents.id, documentChunks.documentId))
+            .where(eq(documents.courseId, validated.courseId))
+            .orderBy((t) => desc(t.similarity))
+            .limit(3);
 
-        if (similarChunks.length > 0) {
-          ragContext =
-            "Relevant Course Document Context:\n" +
-            similarChunks.map((c) => c.content).join("\n---\n") +
-            "\n\n";
+          if (similarChunks.length > 0) {
+            ragContext =
+              "Relevant Course Document Context:\n" +
+              similarChunks.map((c) => c.content).join("\n---\n") +
+              "\n\n";
+          }
         }
       } catch (ragError) {
         console.warn("Study Buddy RAG search failed (proceeding without RAG context):", ragError);

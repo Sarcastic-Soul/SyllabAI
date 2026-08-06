@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import crypto from "crypto";
 import { db } from "@/lib/db";
 import { users, courses } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createCourseSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/ratelimit";
-import { enqueueTopicGeneration } from "@/lib/queue/courseQueue";
+import { generateTopicCourse } from "@/lib/generator/courseGenerator";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, has } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -29,7 +33,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (userDb.subscriptionPlan === "basic") {
+    const isPro = has({ plan: "pro" }) || userDb.subscriptionPlan === "pro";
+
+    if (!isPro) {
       const activeCourses = await db.query.courses.findMany({
         where: eq(courses.author, userId),
       });
@@ -44,18 +50,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = createCourseSchema.parse(body);
 
-    const jobId = await enqueueTopicGeneration({
+    const jobId = `job_topic_${crypto.randomUUID()}`;
+
+    // Execute generation synchronously within Vercel serverless request duration
+    const courseId = await generateTopicCourse(jobId, {
       userId,
       topic: validated.topic,
+      description: validated.description,
       duration: validated.duration,
       difficulty: validated.difficulty as "Beginner" | "Intermediate" | "Advanced",
     });
 
-    return NextResponse.json({ success: true, jobId });
+    return NextResponse.json({ success: true, jobId, courseId });
   } catch (error: any) {
     console.error("Error in /api/generate/topic:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to enqueue course generation job" },
+      { error: error.message || "Failed to generate course" },
       { status: 400 }
     );
   }

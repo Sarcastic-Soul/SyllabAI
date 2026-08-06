@@ -166,7 +166,7 @@ const ProfilePage = async () => {
         </div>
 
         <div className="p-6 border rounded-2xl bg-card space-y-2">
-          <div className="flex items-center gap-2 text-purple-500">
+          <div className="flex items-center gap-2 text-primary">
             <GraduationCap className="w-5 h-5" />
             <h3 className="font-semibold">Questions Answered</h3>
           </div>

@@ -61,9 +61,7 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
             {chapter.mermaidDiagram && (
                 <div className="pt-8 border-t">
                     <h2 className="text-2xl font-bold mb-4">Visual Concept</h2>
-                    <div className="p-4 bg-card border rounded-xl overflow-auto">
-                        <MermaidDiagram code={chapter.mermaidDiagram} />
-                    </div>
+                    <MermaidDiagram code={chapter.mermaidDiagram} />
                 </div>
             )}
 
