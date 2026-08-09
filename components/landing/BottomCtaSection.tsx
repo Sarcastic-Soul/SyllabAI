@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight } from "lucide-react";
 import { Show, SignUpButton } from "@clerk/nextjs";
 import { motion } from "motion/react";
-import MagneticButton from "./MagneticButton";
 
 export default function BottomCtaSection() {
   return (
@@ -34,41 +33,37 @@ export default function BottomCtaSection() {
         <div className="z-10 pt-2">
           <Show when="signed-out">
             <SignUpButton>
-              <MagneticButton maxDistance={20}>
-                <motion.div
-                  whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)" }}
-                  whileTap={{ scale: 0.98 }}
+              <motion.div
+                whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)" }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="text-lg px-8 py-6 rounded-full font-bold shadow-lg bg-background text-foreground hover:bg-background/95 transition-all cursor-pointer"
                 >
-                  <Button
-                    size="lg"
-                    variant="secondary"
-                    className="text-lg px-8 py-6 rounded-full font-bold shadow-lg bg-background text-foreground hover:bg-background/95 transition-all cursor-pointer"
-                  >
-                    Generate Your First Course
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </motion.div>
-              </MagneticButton>
+                  Generate Your First Course
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </motion.div>
             </SignUpButton>
           </Show>
 
           <Show when="signed-in">
             <Link href="/dashboard">
-              <MagneticButton maxDistance={20}>
-                <motion.div
-                  whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)" }}
-                  whileTap={{ scale: 0.98 }}
+              <motion.div
+                whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)" }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="text-lg px-8 py-6 rounded-full font-bold shadow-lg bg-background text-foreground hover:bg-background/95 transition-all cursor-pointer"
                 >
-                  <Button
-                    size="lg"
-                    variant="secondary"
-                    className="text-lg px-8 py-6 rounded-full font-bold shadow-lg bg-background text-foreground hover:bg-background/95 transition-all cursor-pointer"
-                  >
-                    Return to Dashboard
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </motion.div>
-              </MagneticButton>
+                  Return to Dashboard
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </motion.div>
             </Link>
           </Show>
         </div>

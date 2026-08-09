@@ -8,7 +8,6 @@ import { SiGithub } from "@icons-pack/react-simple-icons";
 import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { motion } from "motion/react";
 import CursorGlow from "./CursorGlow";
-import MagneticButton from "./MagneticButton";
 import AnimatedHeadline from "./AnimatedHeadline";
 import HeroVideoMockup from "./HeroVideoMockup";
 
@@ -67,30 +66,15 @@ export default function HeroSection({
             <span>The Ultimate AI-Powered LMS</span>
           </div>
 
-          <MagneticButton maxDistance={15}>
-            <a
-              href="https://github.com/Sarcastic-Soul/SyllabAI"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border/80 px-3.5 py-1.5 text-xs font-semibold bg-card/80 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all backdrop-blur-sm shadow-xs group"
-            >
-              <SiGithub className="w-3.5 h-3.5 text-foreground group-hover:text-primary transition-colors" />
-              <span>⭐ Star on GitHub</span>
-            </a>
-          </MagneticButton>
-        </motion.div>
-
-        {/* Logo */}
-        <motion.div variants={itemVariants}>
-          <Image
-            src="/logo.svg"
-            alt="SyllabAI Logo"
-            width={220}
-            height={110}
-            className="mb-2 h-14 w-auto object-contain drop-shadow-sm"
-            priority
-            loading="eager"
-          />
+          <a
+            href="https://github.com/Sarcastic-Soul/SyllabAI"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/80 px-3.5 py-1.5 text-xs font-semibold bg-card/80 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all backdrop-blur-sm shadow-xs group"
+          >
+            <SiGithub className="w-3.5 h-3.5 text-foreground group-hover:text-primary transition-colors" />
+            <span>⭐ Star on GitHub</span>
+          </a>
         </motion.div>
 
         {/* Staggered Word-Level Animated Headline */}
@@ -112,7 +96,7 @@ export default function HeroSection({
           tutor.
         </motion.p>
 
-        {/* CTA Buttons wrapped in MagneticButton */}
+        {/* CTA Buttons */}
         <motion.div
           variants={itemVariants}
           className="flex flex-col sm:flex-row items-center gap-4 pt-4 w-full sm:w-auto"
@@ -120,62 +104,6 @@ export default function HeroSection({
           <Show when="signed-out">
             <SignUpButton>
               <div className="w-full sm:w-auto">
-                <MagneticButton maxDistance={20}>
-                  <motion.div
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full sm:w-auto"
-                  >
-                    <Button
-                      size="lg"
-                      className="text-lg px-8 py-6 rounded-full w-full sm:w-auto shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/35 transition-all bg-primary text-primary-foreground font-semibold cursor-pointer"
-                      onClick={() => setLoadingSignUp(true)}
-                      disabled={loadingSignUp}
-                    >
-                      {loadingSignUp ? (
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      ) : (
-                        <>
-                          Start Learning{" "}
-                          <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                        </>
-                      )}
-                    </Button>
-                  </motion.div>
-                </MagneticButton>
-              </div>
-            </SignUpButton>
-
-            <SignInButton>
-              <div className="w-full sm:w-auto">
-                <MagneticButton maxDistance={18}>
-                  <motion.div
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full sm:w-auto"
-                  >
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="text-lg px-8 py-6 rounded-full w-full sm:w-auto border-2 hover:bg-muted/80 font-medium cursor-pointer"
-                      onClick={() => setLoadingSignIn(true)}
-                      disabled={loadingSignIn}
-                    >
-                      {loadingSignIn ? (
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      ) : (
-                        "Sign In"
-                      )}
-                    </Button>
-                  </motion.div>
-                </MagneticButton>
-              </div>
-            </SignInButton>
-          </Show>
-
-          <Show when="signed-in">
-            <Link href="/dashboard" className="w-full sm:w-auto">
-              <MagneticButton maxDistance={20}>
                 <motion.div
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.98 }}
@@ -184,20 +112,70 @@ export default function HeroSection({
                   <Button
                     size="lg"
                     className="text-lg px-8 py-6 rounded-full w-full sm:w-auto shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/35 transition-all bg-primary text-primary-foreground font-semibold cursor-pointer"
-                    onClick={() => setLoadingDashboard(true)}
-                    disabled={loadingDashboard}
+                    onClick={() => setLoadingSignUp(true)}
+                    disabled={loadingSignUp}
                   >
-                    {loadingDashboard ? (
+                    {loadingSignUp ? (
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     ) : (
                       <>
-                        Go to Dashboard{" "}
-                        <ArrowRight className="ml-2 h-5 w-5" />
+                        Start Learning{" "}
+                        <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                       </>
                     )}
                   </Button>
                 </motion.div>
-              </MagneticButton>
+              </div>
+            </SignUpButton>
+
+            <SignInButton>
+              <div className="w-full sm:w-auto">
+                <motion.div
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full sm:w-auto"
+                >
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="text-lg px-8 py-6 rounded-full w-full sm:w-auto border-2 hover:bg-muted/80 font-medium cursor-pointer"
+                    onClick={() => setLoadingSignIn(true)}
+                    disabled={loadingSignIn}
+                  >
+                    {loadingSignIn ? (
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                      "Sign In"
+                    )}
+                  </Button>
+                </motion.div>
+              </div>
+            </SignInButton>
+          </Show>
+
+          <Show when="signed-in">
+            <Link href="/dashboard" className="w-full sm:w-auto">
+              <motion.div
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full sm:w-auto"
+              >
+                <Button
+                  size="lg"
+                  className="text-lg px-8 py-6 rounded-full w-full sm:w-auto shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/35 transition-all bg-primary text-primary-foreground font-semibold cursor-pointer"
+                  onClick={() => setLoadingDashboard(true)}
+                  disabled={loadingDashboard}
+                >
+                  {loadingDashboard ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      Go to Dashboard{" "}
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </>
+                  )}
+                </Button>
+              </motion.div>
             </Link>
           </Show>
         </motion.div>
