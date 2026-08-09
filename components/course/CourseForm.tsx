@@ -87,7 +87,10 @@ export default function CourseForm() {
     };
 
     es.onerror = (err) => {
-      console.warn("SSE connection error:", err);
+      console.warn("SSE connection closed or lost:", err);
+      if (es.readyState === EventSource.CLOSED) {
+        es.close();
+      }
     };
   };
 
