@@ -49,7 +49,7 @@ export default function HeroVideoMockup() {
             {/* Platform Preview Image Mockup */}
             <div className="relative w-full overflow-hidden">
               <Image
-                src="/images/voice-lms.png"
+                src="/images/banner.png"
                 alt="SyllabAI Platform Preview"
                 width={1200}
                 height={800}

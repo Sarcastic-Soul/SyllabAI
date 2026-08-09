@@ -15,6 +15,11 @@ const bricolage = Bricolage_Grotesque({
 export const metadata: Metadata = {
   title: "SyllabAI",
   description: "The Ultimate AI-Powered LMS",
+  icons: {
+    icon: "/logo.svg",
+    shortcut: "/logo.svg",
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
