@@ -99,11 +99,14 @@ export const syncUserToDatabase = async () => {
         .where(eq(users.id, id));
     }
 
-    // Set a cookie so we don't sync again in this session
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    cookieStore.set("user_synced", "true", { maxAge: 60 * 60 * 24 * 7 }); // 1 week
-
+    // Set a cookie so we don't sync again in this session (if invoked in Action/Route handler context)
+    try {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      cookieStore.set("user_synced", "true", { maxAge: 60 * 60 * 24 * 7 }); // 1 week
+    } catch {
+      // Cookies cannot be modified during SSR page renders in Next.js App Router
+    }
   } catch (error: any) {
     console.error("Error syncing user to database:", error.message);
   }

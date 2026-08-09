@@ -13,7 +13,7 @@ export default function SignUpPage() {
               href="/"
               className="inline-flex items-center gap-3 text-white"
             >
-              <Image src="/images/logo.png" alt="logo" width={46} height={44} />
+              <Image src="/logo.svg" alt="logo" width={46} height={44} />
               <span className="text-2xl font-bold">SyllabAI</span>
             </Link>
           </div>
@@ -84,7 +84,7 @@ export default function SignUpPage() {
             <div className="text-center mb-8 lg:hidden">
               <Link href="/" className="inline-flex items-center gap-3">
                 <Image
-                  src="/images/logo.svg"
+                  src="/logo.svg"
                   alt="logo"
                   width={40}
                   height={38}

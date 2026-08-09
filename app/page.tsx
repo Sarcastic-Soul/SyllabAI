@@ -84,7 +84,7 @@ export default function LandingPage() {
       <footer className="w-full py-10 border-t border-border/60 text-center text-sm text-muted-foreground flex flex-col items-center justify-center space-y-4 bg-card/30 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <Image
-            src="/images/logo.png"
+            src="/logo.svg"
             alt="SyllabAI Logo"
             width={60}
             height={30}

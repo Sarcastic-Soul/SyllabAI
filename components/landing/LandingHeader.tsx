@@ -54,7 +54,7 @@ export default function LandingHeader({
             className="relative"
           >
             <Image
-              src="/images/logo.png"
+              src="/logo.svg"
               alt="SyllabAI Logo"
               width={140}
               height={45}

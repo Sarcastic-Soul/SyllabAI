@@ -83,8 +83,8 @@ export default function HeroSection({
         {/* Logo */}
         <motion.div variants={itemVariants}>
           <Image
-            src="/images/logo.png"
-            alt="Voice LMS Logo"
+            src="/logo.svg"
+            alt="SyllabAI Logo"
             width={220}
             height={110}
             className="mb-2 h-14 w-auto object-contain drop-shadow-sm"

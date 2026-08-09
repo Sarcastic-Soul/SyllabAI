@@ -46,30 +46,17 @@ export default function HeroVideoMockup() {
           <div className="rounded-xl overflow-hidden border border-border/80 bg-background shadow-2xl relative group">
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10" />
 
-            {/*
-              Product Demo Video Player:
-              Place demo.webm and demo.mp4 inside /public/videos/
-              Poster serves as static preview fallback while video loads.
-            */}
-            <video
-              ref={videoRef}
-              poster="/images/voice-lms.png"
-              loop
-              muted
-              playsInline
-              className="w-full h-auto object-cover opacity-95 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"
-            >
-              <source src="/videos/demo.webm" type="video/webm" />
-              <source src="/videos/demo.mp4" type="video/mp4" />
+            {/* Platform Preview Image Mockup */}
+            <div className="relative w-full overflow-hidden">
               <Image
                 src="/images/voice-lms.png"
                 alt="SyllabAI Platform Preview"
                 width={1200}
                 height={800}
-                className="w-full h-auto object-cover opacity-95 group-hover:opacity-100 transition-opacity duration-300"
+                className="w-full h-auto object-cover opacity-95 group-hover:opacity-100 group-hover:scale-[1.01] transition-all duration-500 rounded-xl"
                 priority
               />
-            </video>
+            </div>
           </div>
         </TiltCard>
       </motion.div>
