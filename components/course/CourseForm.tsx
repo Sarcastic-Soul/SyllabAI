@@ -17,27 +17,14 @@ import {
   FileText,
   Sparkles,
   AlertCircle,
-  Zap,
-  CheckCircle2,
-  Circle,
   X,
 } from "lucide-react";
-
-interface ProgressData {
-  jobId: string;
-  state: "queued" | "active" | "completed" | "failed";
-  percent: number;
-  step: string;
-  courseId?: string;
-  error?: string;
-  isCached?: boolean;
-}
 
 export default function CourseForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [percent, setPercent] = useState(0);
 
   // Form State
   const [topic, setTopic] = useState("");
@@ -46,52 +33,44 @@ export default function CourseForm() {
   const [duration, setDuration] = useState("5");
   const [difficulty, setDifficulty] = useState<"Beginner" | "Intermediate" | "Advanced">("Beginner");
 
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const animationRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Clean up SSE connection on unmount
+  // Clean up animation timer on unmount
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
       }
     };
   }, []);
 
-  const listenToProgress = (jobId: string) => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
+  const startProgressAnimation = () => {
+    setPercent(0);
+    if (animationRef.current) clearInterval(animationRef.current);
+
+    animationRef.current = setInterval(() => {
+      setPercent((prev) => {
+        if (prev < 40) return prev + 4;
+        if (prev < 75) return prev + 2;
+        if (prev < 95) return prev + 0.8;
+        return 95; // Holds at 95% until server response resolves
+      });
+    }, 150);
+  };
+
+  const stopProgressAnimation = () => {
+    if (animationRef.current) {
+      clearInterval(animationRef.current);
+      animationRef.current = null;
     }
+  };
 
-    const es = new EventSource(`/api/generate/progress?jobId=${jobId}`);
-    eventSourceRef.current = es;
-
-    es.onmessage = (event) => {
-      try {
-        const data: ProgressData = JSON.parse(event.data);
-        setProgress(data);
-
-        if (data.state === "completed" && data.courseId) {
-          es.close();
-          // Short delay so user sees 100% completed status
-          setTimeout(() => {
-            router.push(`/courses/${data.courseId}`);
-          }, 600);
-        } else if (data.state === "failed") {
-          es.close();
-          setError(data.error || "Failed to generate course.");
-          setLoading(false);
-        }
-      } catch (e) {
-        console.error("Error parsing SSE data:", e);
-      }
-    };
-
-    es.onerror = (err) => {
-      console.warn("SSE connection closed or lost:", err);
-      if (es.readyState === EventSource.CLOSED) {
-        es.close();
-      }
-    };
+  const getStatusMessage = (val: number) => {
+    if (val >= 100) return "Course created! Redirecting to course dashboard...";
+    if (val >= 95) return "Almost ready! Finalizing course dashboard...";
+    if (val >= 70) return "Crafting chapter outlines & lesson content...";
+    if (val >= 40) return "Generating structured syllabus with Gemini AI...";
+    return "Analyzing course topic & input parameters...";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,12 +83,7 @@ export default function CourseForm() {
 
     setLoading(true);
     setError("");
-    setProgress({
-      jobId: "",
-      state: "queued",
-      percent: 5,
-      step: file ? "Uploading document and queuing job..." : "Initializing background job...",
-    });
+    startProgressAnimation();
 
     try {
       let res: Response;
@@ -141,29 +115,23 @@ export default function CourseForm() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to start course generation.");
+        throw new Error(data.error || "Failed to generate course.");
       }
 
       if (data.courseId) {
-        setProgress({
-          jobId: data.jobId || "",
-          state: "completed",
-          percent: 100,
-          step: "Course created successfully! Redirecting...",
-        });
+        stopProgressAnimation();
+        setPercent(100);
 
-        router.refresh();
-        router.push(`/courses/${data.courseId}`);
+        setTimeout(() => {
+          router.refresh();
+          router.push(`/courses/${data.courseId}`);
+        }, 400);
         return;
       }
-
-      if (data.jobId) {
-        listenToProgress(data.jobId);
-      }
     } catch (err: any) {
+      stopProgressAnimation();
       setError(err.message || "Failed to generate course. Please try again.");
       setLoading(false);
-      setProgress(null);
     }
   };
 
@@ -176,75 +144,34 @@ export default function CourseForm() {
         </div>
       )}
 
-      {/* --- REAL-TIME GENERATION PROGRESS UI --- */}
-      {loading && progress && (
-        <div className="mb-8 p-6 bg-gradient-to-br from-primary/5 via-card to-amber-500/5 border border-primary/20 rounded-2xl shadow-sm space-y-5 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-primary text-white rounded-xl shadow-xs">
-                <Sparkles className="w-5 h-5 animate-spin" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-foreground text-base">
-                  Generating Course Syllabus
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Serverless execution with Upstash Redis progress tracking
-                </p>
-              </div>
+      {/* --- SLEEK SMOOTH PROGRESS BAR --- */}
+      {loading && (
+        <div className="mb-8 p-6 bg-gradient-to-br from-primary/5 via-card to-amber-500/5 border border-primary/20 rounded-2xl shadow-sm space-y-4 animate-in fade-in duration-300">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 bg-primary text-white rounded-xl shadow-xs">
+              <Sparkles className="w-5 h-5 animate-spin" />
             </div>
-
-            {progress.isCached && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-xs">
-                <Zap className="w-3.5 h-3.5 mr-1 text-emerald-600 fill-emerald-600" />
-                Redis Cache Hit
-              </span>
-            )}
+            <div>
+              <h3 className="font-semibold text-foreground text-base">
+                Generating Course Syllabus
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {getStatusMessage(percent)}
+              </p>
+            </div>
           </div>
 
           {/* Progress Bar */}
           <div className="space-y-2">
-            <div className="flex justify-between text-xs font-medium text-foreground">
-              <span className="truncate max-w-[260px]">{progress.step}</span>
-              <span className="font-bold text-primary">{progress.percent}%</span>
+            <div className="flex justify-between text-xs font-semibold text-foreground">
+              <span>Progress</span>
+              <span className="text-primary font-bold">{Math.round(percent)}%</span>
             </div>
             <div className="w-full bg-muted rounded-full h-3 overflow-hidden p-0.5 border border-border">
               <div
-                className="bg-gradient-to-r from-primary via-orange-500 to-amber-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
-                style={{ width: `${Math.min(100, Math.max(5, progress.percent))}%` }}
+                className="bg-gradient-to-r from-primary via-orange-500 to-amber-500 h-full rounded-full transition-all duration-300 ease-out shadow-xs"
+                style={{ width: `${Math.min(100, Math.max(2, percent))}%` }}
               />
-            </div>
-          </div>
-
-          {/* Step Checkpoints */}
-          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border text-xs text-muted-foreground">
-            <div className="flex items-center space-x-1.5">
-              {progress.percent >= 10 ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              ) : (
-                <Circle className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-              )}
-              <span>1. Queue & Input</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              {progress.percent >= 60 ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              ) : progress.percent >= 10 ? (
-                <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
-              ) : (
-                <Circle className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-              )}
-              <span>2. AI Syllabus</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              {progress.percent >= 100 ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              ) : progress.percent >= 60 ? (
-                <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
-              ) : (
-                <Circle className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-              )}
-              <span>3. DB & RAG Save</span>
             </div>
           </div>
         </div>
