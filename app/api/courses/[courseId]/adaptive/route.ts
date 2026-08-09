@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { calculateCourseMastery } from "@/lib/adaptive";
 
+export const runtime = "nodejs";
+
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ courseId: string }> }
+  props: { params: Promise<{ courseId: string }> | { courseId: string } }
 ) {
   try {
     const { userId } = await auth();
@@ -12,9 +14,14 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { courseId } = await params;
-    const metrics = await calculateCourseMastery(courseId);
+    const params = await props.params;
+    const courseId = params?.courseId;
 
+    if (!courseId) {
+      return NextResponse.json({ error: "Course ID is required" }, { status: 400 });
+    }
+
+    const metrics = await calculateCourseMastery(courseId);
     return NextResponse.json(metrics);
   } catch (error: any) {
     console.error("Error in /api/courses/[courseId]/adaptive:", error);
