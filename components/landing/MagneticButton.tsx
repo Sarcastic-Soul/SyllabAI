@@ -71,8 +71,9 @@ export default function MagneticButton({
       style={{
         x: springX,
         y: springY,
+        transform: "translateZ(0)",
       }}
-      className={className}
+      className={`will-change-transform transform-gpu ${className}`}
     >
       {children}
     </motion.div>

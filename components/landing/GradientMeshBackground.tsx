@@ -48,7 +48,8 @@ export default function GradientMeshBackground() {
           repeatType: "mirror",
           ease: "easeInOut",
         }}
-        className="absolute top-10 left-1/4 w-[500px] h-[500px] rounded-full bg-[#fe5933]/20 blur-3xl"
+        style={{ transform: "translateZ(0)" }}
+        className="absolute top-10 left-1/4 w-[500px] h-[500px] rounded-full bg-[#fe5933]/20 blur-3xl will-change-transform transform-gpu"
       />
 
       {/* Blob 2: CTA Gold (#fccc41) */}
@@ -60,7 +61,8 @@ export default function GradientMeshBackground() {
           repeatType: "mirror",
           ease: "easeInOut",
         }}
-        className="absolute top-32 right-1/4 w-[450px] h-[450px] rounded-full bg-[#fccc41]/20 blur-3xl"
+        style={{ transform: "translateZ(0)" }}
+        className="absolute top-32 right-1/4 w-[450px] h-[450px] rounded-full bg-[#fccc41]/20 blur-3xl will-change-transform transform-gpu"
       />
 
       {/* Blob 3: Warm Orange Glow */}
@@ -72,7 +74,8 @@ export default function GradientMeshBackground() {
           repeatType: "mirror",
           ease: "easeInOut",
         }}
-        className="absolute top-64 left-1/3 w-[550px] h-[550px] rounded-full bg-[#ff7a59]/15 blur-3xl"
+        style={{ transform: "translateZ(0)" }}
+        className="absolute top-64 left-1/3 w-[550px] h-[550px] rounded-full bg-[#ff7a59]/15 blur-3xl will-change-transform transform-gpu"
       />
 
       {/* Blob 4: Deep Rose/Primary Accent */}
@@ -84,7 +87,8 @@ export default function GradientMeshBackground() {
           repeatType: "mirror",
           ease: "easeInOut",
         }}
-        className="absolute top-96 right-1/3 w-[400px] h-[400px] rounded-full bg-[#ea580c]/15 blur-3xl"
+        style={{ transform: "translateZ(0)" }}
+        className="absolute top-96 right-1/3 w-[400px] h-[400px] rounded-full bg-[#ea580c]/15 blur-3xl will-change-transform transform-gpu"
       />
     </div>
   );

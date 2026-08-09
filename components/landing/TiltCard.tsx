@@ -32,6 +32,8 @@ export default function TiltCard({
       glareColor="#fe5933"
       glarePosition="all"
       glareBorderRadius="1.5rem"
+      gyroscope={false}
+      trackOnWindow={false}
       className={className}
     >
       {children}

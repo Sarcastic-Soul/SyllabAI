@@ -34,6 +34,8 @@ export default function HeroVideoMockup() {
           repeat: Infinity,
           ease: "easeInOut",
         }}
+        style={{ transform: "translateZ(0)" }}
+        className="will-change-transform transform-gpu"
       >
         <TiltCard
           tiltMaxAngleX={5}

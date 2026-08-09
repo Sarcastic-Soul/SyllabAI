@@ -65,8 +65,9 @@ export default function CursorGlow() {
         style={{
           x: springX,
           y: springY,
+          transform: "translateZ(0)",
         }}
-        className="absolute top-0 left-0 w-[350px] h-[350px] rounded-full bg-gradient-to-r from-[#fe5933]/25 via-amber-500/20 to-transparent blur-3xl opacity-75 pointer-events-none"
+        className="absolute top-0 left-0 w-[350px] h-[350px] rounded-full bg-gradient-to-r from-[#fe5933]/25 via-amber-500/20 to-transparent blur-3xl opacity-75 pointer-events-none will-change-transform transform-gpu"
       />
     </div>
   );

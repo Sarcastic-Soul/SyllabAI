@@ -18,13 +18,9 @@ export default function BottomCtaSection() {
         className="p-10 md:p-16 rounded-3xl bg-gradient-to-br from-primary via-[#ff6a47] to-amber-500 text-primary-foreground space-y-8 flex flex-col items-center relative overflow-hidden shadow-2xl shadow-primary/25 border border-primary/30"
       >
         {/* Continuous Slow Rotating Decorative Zap Icon */}
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-          className="absolute -right-16 -top-16 w-80 h-80 opacity-15 pointer-events-none select-none"
-        >
+        <div className="absolute -right-16 -top-16 w-80 h-80 opacity-15 pointer-events-none select-none animate-[spin_40s_linear_infinite] will-change-transform transform-gpu">
           <Zap className="w-full h-full text-white" />
-        </motion.div>
+        </div>
 
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold z-10 text-balance tracking-tight">
           Ready to design your learning path?
