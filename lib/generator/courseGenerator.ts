@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { PDFParse } from "pdf-parse";
+import { extractText } from "unpdf";
 import crypto from "crypto";
 import { db } from "@/lib/db";
 import { courses, chapters, users, documents, documentChunks } from "@/lib/db/schema";
@@ -221,10 +221,8 @@ export async function generatePdfCourse(jobId: string, data: Omit<Extract<Genera
 
     const ext = filename.split(".").pop()?.toLowerCase();
     if (ext === "pdf") {
-      const parser = new PDFParse({ data: new Uint8Array(fileBuffer) });
-      const result = await parser.getText();
-      documentText = result.text;
-      await parser.destroy();
+      const { text } = await extractText(new Uint8Array(fileBuffer));
+      documentText = Array.isArray(text) ? text.join("\n") : (text || "");
     } else {
       documentText = fileBuffer.toString("utf-8");
     }

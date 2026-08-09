@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ hostname: "img.clerk.com" }],
   },
-  serverExternalPackages: ["pdf-parse"],
+  serverExternalPackages: ["unpdf"],
   experimental: {
     optimizePackageImports: [
       "lucide-react",
