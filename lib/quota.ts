@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getCachedValue, setCachedValue } from "@/lib/redis";
 import { logInfo, logWarn } from "@/lib/logger";
+import { withRetry } from "@/lib/utils/retry";
 
 export function getGenAI(): GoogleGenerativeAI {
   const apiKey =
@@ -155,15 +156,15 @@ export async function getEmbeddingVector(text: string): Promise<number[] | null>
 
   try {
     const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-    const res = await embedModel.embedContent(text);
+    const res = await withRetry(() => embedModel.embedContent(text));
     return res.embedding.values;
-  } catch (err) {
+  } catch (err: any) {
     try {
       const fallbackModel = genAI.getGenerativeModel({ model: "embedding-001" });
-      const res = await fallbackModel.embedContent(text);
+      const res = await withRetry(() => fallbackModel.embedContent(text));
       return res.embedding.values;
-    } catch (fallbackErr) {
-      logWarn("Embedding generation skipped: model unavailable or error occurred.");
+    } catch (fallbackErr: any) {
+      logWarn(`Embedding generation skipped: ${fallbackErr?.message || err?.message || "Model unavailable"}`);
       return null;
     }
   }
