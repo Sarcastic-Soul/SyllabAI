@@ -12,9 +12,7 @@ import { getCachedValue, setCachedValue, getCachedEmbedding, setCachedEmbedding 
 import { GenerationJobData, JobProgressState } from "@/lib/queue/types";
 import { setJobProgressState } from "@/lib/queue/progress";
 import { trackEvent } from "@/lib/analytics";
-import { getSmartGenerativeModel, getEmbeddingVector } from "@/lib/quota";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+import { getSmartGenerativeModel, getEmbeddingVector, getGenAI } from "@/lib/quota";
 
 /**
  * Max characters allowed from uploaded document to fit serverless execution budget (~100k chars)
@@ -265,6 +263,7 @@ export async function generatePdfCourse(jobId: string, data: Omit<Extract<Genera
     if (!syllabus) {
       await reportProgress(jobId, 45, "Generating course outline with Gemini AI...", "active");
 
+      const genAI = getGenAI();
       const summarizerModel = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
       const mapPrompt = "Extract the main topics, sub-topics, and key structural elements from this text segment to help build a course syllabus. Be concise, use bullet points.";
 

@@ -10,9 +10,7 @@ import { generateQuizSchema, submitQuizScoreSchema } from "@/lib/validations";
 import { withRetry } from "@/lib/utils/retry";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { calculateCourseMastery } from "@/lib/adaptive";
-import { trackEvent } from "@/lib/analytics";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+import { getGenAI } from "@/lib/quota";
 
 export async function generateChapterQuiz(
   chapterId: string,
@@ -74,7 +72,7 @@ export async function generateChapterQuiz(
         `;
 
     // Model optimization: Use gemini-3.5-flash-lite for quizzes
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
+    const model = getGenAI().getGenerativeModel({ model: "gemini-3.5-flash-lite" });
     const result = await withRetry(() => model.generateContent(prompt));
 
     const cleanedText = result.response

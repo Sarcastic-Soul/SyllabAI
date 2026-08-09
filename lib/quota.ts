@@ -2,7 +2,19 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getCachedValue, setCachedValue } from "@/lib/redis";
 import { logInfo, logWarn } from "@/lib/logger";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+export function getGenAI(): GoogleGenerativeAI {
+  const apiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GEMINI_API_KEY ||
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error(
+      "MISSING_GEMINI_API_KEY: Environment variable GEMINI_API_KEY is missing or empty in Vercel settings. Please configure GEMINI_API_KEY in your Vercel Project Environment Variables."
+    );
+  }
+  return new GoogleGenerativeAI(apiKey.trim());
+}
 
 export const QUOTA_LIMITS = {
   "gemini-3.6-flash": 20,
@@ -84,7 +96,7 @@ export async function getDailyQuotaStatus(): Promise<QuotaStatusSummary> {
 }
 
 export interface SmartModelSelection {
-  model: ReturnType<typeof genAI.getGenerativeModel>;
+  model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>;
   modelName: "gemini-3.6-flash" | "gemini-3.5-flash-lite";
   isFallback: boolean;
 }
@@ -97,6 +109,7 @@ export interface SmartModelSelection {
 export async function getSmartGenerativeModel(
   preferredModel: "gemini-3.6-flash" | "gemini-3.5-flash-lite" = "gemini-3.6-flash"
 ): Promise<SmartModelSelection> {
+  const genAI = getGenAI();
   const usage36 = await getModelUsageToday("gemini-3.6-flash");
 
   // Check if preferredModel (3.6 Flash) is near its 20/day limit
@@ -137,6 +150,8 @@ export async function getSmartGenerativeModel(
  */
 export async function getEmbeddingVector(text: string): Promise<number[] | null> {
   if (!text || text.trim().length === 0) return null;
+
+  const genAI = getGenAI();
 
   try {
     const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
