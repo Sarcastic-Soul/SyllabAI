@@ -12,6 +12,7 @@ import {
     flashcardQuerySchema,
 } from "@/lib/validations";
 import { withRetry } from "@/lib/utils/retry";
+import { checkRateLimit } from "@/lib/ratelimit";
 import { getEmbeddingVector, getGenAI } from "@/lib/quota";
 
 /**

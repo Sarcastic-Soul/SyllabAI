@@ -7,6 +7,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { revalidatePath } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { withRetry } from "@/lib/utils/retry";
+import { checkRateLimit } from "@/lib/ratelimit";
 import { getGenAI } from "@/lib/quota";
 
 export async function deleteCourse(courseId: string) {
