@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ["pdf-parse"],
   experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "@clerk/nextjs",
+      "@icons-pack/react-simple-icons",
+      "motion",
+      "recharts",
+    ],
     serverActions: {
       bodySizeLimit: "10mb", // Adjust this value as needed
     },

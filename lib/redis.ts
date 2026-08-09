@@ -1,4 +1,4 @@
-import Redis from "ioredis";
+import { Redis } from "@upstash/redis";
 
 // Global cache store for in-memory fallback
 const inMemoryCache = new Map<string, { value: string; expiresAt: number }>();
@@ -12,35 +12,22 @@ function cleanInMemoryCache() {
   }
 }
 
-// Singleton Redis connection using ioredis (supports Upstash Redis TCP protocol rediss://...)
+// Singleton Upstash HTTP REST Redis client
 let redisClient: Redis | null = null;
 
 export function getRedisClient(): Redis | null {
-  const redisUrl = process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL;
-  if (!redisUrl) {
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
     return null;
   }
 
   if (!redisClient) {
     try {
-      redisClient = new Redis(redisUrl, {
-        maxRetriesPerRequest: null,
-        enableReadyCheck: false,
-        lazyConnect: true,
-        retryStrategy(times) {
-          if (times > 3) {
-            console.warn("Redis connection retries exceeded. Falling back to in-memory mode.");
-            return null;
-          }
-          return Math.min(times * 200, 1000);
-        },
-      });
-
-      redisClient.on("error", (err) => {
-        console.warn("Redis error, in-memory fallback will be used:", err.message);
-      });
+      redisClient = new Redis({ url, token });
     } catch (e) {
-      console.warn("Failed to initialize Redis client:", e);
+      console.warn("Failed to initialize Upstash Redis client:", e);
       redisClient = null;
     }
   }
@@ -53,9 +40,12 @@ export function getRedisClient(): Redis | null {
  */
 export async function getCachedValue(key: string): Promise<string | null> {
   const redis = getRedisClient();
-  if (redis && redis.status === "ready") {
+  if (redis) {
     try {
-      return await redis.get(key);
+      const res = await redis.get<string>(key);
+      if (res !== null && res !== undefined) {
+        return typeof res === "string" ? res : JSON.stringify(res);
+      }
     } catch (e) {
       console.warn(`Redis get failed for key ${key}:`, e);
     }
@@ -79,9 +69,9 @@ export async function setCachedValue(
   ttlSeconds: number = 86400 // 24 hours default
 ): Promise<void> {
   const redis = getRedisClient();
-  if (redis && redis.status === "ready") {
+  if (redis) {
     try {
-      await redis.set(key, value, "EX", ttlSeconds);
+      await redis.set(key, value, { ex: ttlSeconds });
       return;
     } catch (e) {
       console.warn(`Redis set failed for key ${key}:`, e);

@@ -8,6 +8,8 @@ import ConditionalNavbar from "@/components/shared/ConditionalNavbar";
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
   subsets: ["latin"],
+  display: "swap",
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
