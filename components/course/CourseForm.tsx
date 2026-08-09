@@ -144,7 +144,22 @@ export default function CourseForm() {
         throw new Error(data.error || "Failed to start course generation.");
       }
 
-      listenToProgress(data.jobId);
+      if (data.courseId) {
+        setProgress({
+          jobId: data.jobId || "",
+          state: "completed",
+          percent: 100,
+          step: "Course created successfully! Redirecting...",
+        });
+
+        router.refresh();
+        router.push(`/courses/${data.courseId}`);
+        return;
+      }
+
+      if (data.jobId) {
+        listenToProgress(data.jobId);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to generate course. Please try again.");
       setLoading(false);
