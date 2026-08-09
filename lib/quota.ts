@@ -1,7 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getCachedValue, setCachedValue } from "@/lib/redis";
+import { getCachedValue, setCachedValue, incrementCachedCounter } from "@/lib/redis";
 import { logInfo, logWarn } from "@/lib/logger";
 import { withRetry } from "@/lib/utils/retry";
+import { db } from "@/lib/db";
+import { courses } from "@/lib/db/schema";
+import { gte } from "drizzle-orm";
 
 export function getGenAI(): GoogleGenerativeAI {
   const apiKey =
@@ -30,6 +33,12 @@ function getTodayKey(model: string): string {
   return `gemini:quota:${model}:${today}`;
 }
 
+function getStartOfTodayUTC(): Date {
+  const now = new Date();
+  now.setUTCHours(0, 0, 0, 0);
+  return now;
+}
+
 /**
  * Gets current daily usage count for a given model.
  */
@@ -38,9 +47,31 @@ export async function getModelUsageToday(model: "gemini-3.6-flash" | "gemini-3.5
   const raw = await getCachedValue(key);
   if (raw !== null) {
     const val = parseInt(raw, 10);
-    return isNaN(val) ? 0 : val;
+    if (!isNaN(val) && val > 0) return val;
   }
-  return inMemoryQuotaMap.get(key) || 0;
+
+  const memoryVal = inMemoryQuotaMap.get(key) || 0;
+  if (memoryVal > 0) return memoryVal;
+
+  // Ground-truth database fallback count for gemini-3.6-flash
+  if (model === "gemini-3.6-flash") {
+    try {
+      const todayStart = getStartOfTodayUTC();
+      const todayCourses = await db.query.courses.findMany({
+        where: gte(courses.createdAt, todayStart),
+      });
+      const dbCount = todayCourses.length;
+      if (dbCount > 0) {
+        await setCachedValue(key, String(dbCount), 86400);
+        inMemoryQuotaMap.set(key, dbCount);
+        return dbCount;
+      }
+    } catch (e) {
+      console.warn("DB fallback query for quota status failed:", e);
+    }
+  }
+
+  return 0;
 }
 
 /**
@@ -48,12 +79,8 @@ export async function getModelUsageToday(model: "gemini-3.6-flash" | "gemini-3.5
  */
 export async function incrementModelUsage(model: "gemini-3.6-flash" | "gemini-3.5-flash-lite"): Promise<number> {
   const key = getTodayKey(model);
-  const current = await getModelUsageToday(model);
-  const newCount = current + 1;
-
+  const newCount = await incrementCachedCounter(key, 86400);
   inMemoryQuotaMap.set(key, newCount);
-  await setCachedValue(key, String(newCount), 86400); // 24 hours TTL
-
   logInfo(`[QUOTA_TRACKER] Incremented usage for ${model}: ${newCount}/${QUOTA_LIMITS[model]} today`);
   return newCount;
 }
