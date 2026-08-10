@@ -263,8 +263,8 @@ export async function generatePdfCourse(jobId: string, data: Omit<Extract<Genera
     if (!syllabus) {
       await reportProgress(jobId, 45, "Generating course outline with Gemini AI...", "active");
 
-      const genAI = getGenAI();
-      const summarizerModel = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+      const { model: summarizerModel } = await getSmartGenerativeModel("gemini-3.6-flash");
+
       const mapPrompt = "Extract the main topics, sub-topics, and key structural elements from this text segment to help build a course syllabus. Be concise, use bullet points.";
 
       const chunksToSummarize = summaryChunks.slice(0, 5);

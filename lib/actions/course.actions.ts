@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { withRetry } from "@/lib/utils/retry";
 import { checkRateLimit } from "@/lib/ratelimit";
-import { getGenAI } from "@/lib/quota";
+import { getSmartGenerativeModel } from "@/lib/quota";
 
 export async function deleteCourse(courseId: string) {
   try {
@@ -87,7 +87,7 @@ export async function generateCourseCheatSheet(courseId: string) {
       ${chapterTexts.substring(0, 50000)}
     `;
 
-    const model = getGenAI().getGenerativeModel({ model: "gemini-3.6-flash" });
+    const { model } = await getSmartGenerativeModel("gemini-3.6-flash");
     const result = await withRetry(() => model.generateContent(prompt));
     let cheatSheetContent = result.response.text();
     cheatSheetContent = cheatSheetContent.replace(/\\n/g, "\n");

@@ -6,12 +6,17 @@ import {
   Area,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { DailyTrendItem, QuizMetricsSummary, EventTypeDistributionItem } from "@/lib/queries/analytics";
+import {
+  DailyTrendItem,
+  QuizMetricsSummary,
+  EventTypeDistributionItem,
+} from "@/lib/queries/analytics";
 import { Activity, TrendingUp, Zap, Award, BarChart3, Calendar } from "lucide-react";
 import GeminiQuotaCard from "./GeminiQuotaCard";
 
@@ -22,6 +27,16 @@ interface AdminStatsClientProps {
     quizMetrics: QuizMetricsSummary;
   };
 }
+
+const BAR_COLORS = [
+  "#fe5933", // Primary Orange
+  "#3b82f6", // Vibrant Blue
+  "#10b981", // Emerald Green
+  "#8b5cf6", // Purple
+  "#f59e0b", // Amber
+  "#ec4899", // Pink
+  "#06b6d4", // Cyan
+];
 
 export default function AdminStatsClient({ data }: AdminStatsClientProps) {
   const { eventDistribution, dailyTrends, quizMetrics } = data;
@@ -108,23 +123,43 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
               <AreaChart data={dailyTrends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorCourses" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--primary, #fe5933)" stopOpacity={0.6} />
+                    <stop offset="95%" stopColor="var(--primary, #fe5933)" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border, #e4e4e7)" opacity={0.6} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11, fill: "#71717a" }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11, fill: "#71717a" }}
+                  allowDecimals={false}
+                />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    color: "hsl(var(--card-foreground))",
+                    backgroundColor: "var(--card, #ffffff)",
+                    color: "var(--card-foreground, #09090b)",
                     borderRadius: "12px",
-                    border: "1px solid hsl(var(--border))",
+                    border: "1px solid var(--border, #e4e4e7)",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
                     fontSize: "12px",
+                    fontWeight: "500",
                   }}
                 />
-                <Area type="monotone" dataKey="coursesGenerated" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorCourses)" name="Courses Generated" />
+                <Area
+                  type="monotone"
+                  dataKey="coursesGenerated"
+                  stroke="var(--primary, #fe5933)"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorCourses)"
+                  name="Courses Generated"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -153,19 +188,35 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
           <div className="h-64 w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={eventDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border, #e4e4e7)" opacity={0.6} />
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11, fill: "#71717a" }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11, fill: "#71717a" }}
+                  allowDecimals={false}
+                />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    color: "hsl(var(--card-foreground))",
+                    backgroundColor: "var(--card, #ffffff)",
+                    color: "var(--card-foreground, #09090b)",
                     borderRadius: "12px",
-                    border: "1px solid hsl(var(--border))",
+                    border: "1px solid var(--border, #e4e4e7)",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
                     fontSize: "12px",
+                    fontWeight: "500",
                   }}
                 />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} name="Event Count" />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} name="Event Count">
+                  {eventDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>

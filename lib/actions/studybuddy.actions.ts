@@ -11,7 +11,7 @@ import {
 } from "@/lib/validations";
 import { withRetry } from "@/lib/utils/retry";
 import { checkRateLimit } from "@/lib/ratelimit";
-import { getEmbeddingVector, getGenAI } from "@/lib/quota";
+import { getEmbeddingVector, getSmartGenerativeModel } from "@/lib/quota";
 
 /**
  * Fetch full conversation history for a course with row-level ownership/access checks.
@@ -177,7 +177,7 @@ ${validated.courseStructure}
 
 ${ragContext}${conversationContext}`;
 
-    const model = getGenAI().getGenerativeModel({ model: "gemini-3.5-flash-lite" });
+    const { model } = await getSmartGenerativeModel("gemini-3.5-flash-lite");
 
     const response = await withRetry(() =>
       model.generateContent({

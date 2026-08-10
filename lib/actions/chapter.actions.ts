@@ -13,7 +13,7 @@ import {
 } from "@/lib/validations";
 import { withRetry } from "@/lib/utils/retry";
 import { checkRateLimit } from "@/lib/ratelimit";
-import { getEmbeddingVector, getGenAI } from "@/lib/quota";
+import { getEmbeddingVector, getSmartGenerativeModel } from "@/lib/quota";
 
 /**
  * Helper to verify user ownership of a chapter via its parent course.
@@ -183,7 +183,7 @@ export async function generateChapterLesson(
         `;
 
         // High reasoning model for full lesson creation
-        const model = getGenAI().getGenerativeModel({ model: "gemini-3.6-flash" });
+        const { model } = await getSmartGenerativeModel("gemini-3.6-flash");
         const result = await withRetry(() => model.generateContent(prompt));
         const lessonContent = result.response.text();
 
@@ -241,7 +241,7 @@ export async function generateChapterMermaid(
             ${chapter.lessonText}
         `;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+        const { model } = await getSmartGenerativeModel("gemini-3.6-flash");
         const result = await withRetry(() => model.generateContent(prompt));
         let mermaidContent = result.response.text();
         
@@ -288,7 +288,7 @@ export async function generateChapterFlashcards(chapterId: string) {
         `;
 
         // Model optimization: Use gemini-3.5-flash-lite for flashcards
-        const model = getGenAI().getGenerativeModel({ model: "gemini-3.5-flash-lite" });
+        const { model } = await getSmartGenerativeModel("gemini-3.5-flash-lite");
         const result = await withRetry(() =>
             model.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],

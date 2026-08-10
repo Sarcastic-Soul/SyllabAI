@@ -250,15 +250,17 @@ export default function CourseForm() {
         </div>
 
         {/* Difficulty & Chapters Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Difficulty</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3">
+            <Label htmlFor="difficulty-select" className="shrink-0 font-medium text-sm">
+              Difficulty
+            </Label>
             <Select
               value={difficulty}
               onValueChange={(val) => setDifficulty(val as any)}
               disabled={loading}
             >
-              <SelectTrigger>
+              <SelectTrigger id="difficulty-select" className="flex-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -269,14 +271,16 @@ export default function CourseForm() {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Chapters</Label>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="chapters-select" className="shrink-0 font-medium text-sm">
+              Chapters
+            </Label>
             <Select
               value={duration}
               onValueChange={setDuration}
               disabled={loading}
             >
-              <SelectTrigger>
+              <SelectTrigger id="chapters-select" className="flex-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -287,6 +291,7 @@ export default function CourseForm() {
             </Select>
           </div>
         </div>
+
 
         <Button
           type="submit"

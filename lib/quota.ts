@@ -3,8 +3,8 @@ import { getCachedValue, setCachedValue, incrementCachedCounter } from "@/lib/re
 import { logInfo, logWarn } from "@/lib/logger";
 import { withRetry } from "@/lib/utils/retry";
 import { db } from "@/lib/db";
-import { courses } from "@/lib/db/schema";
-import { gte } from "drizzle-orm";
+import { courses, studyBuddyMessages } from "@/lib/db/schema";
+import { gte, and, eq } from "drizzle-orm";
 
 export function getGenAI(): GoogleGenerativeAI {
   const apiKey =
@@ -44,35 +44,48 @@ function getStartOfTodayUTC(): Date {
  */
 export async function getModelUsageToday(model: "gemini-3.6-flash" | "gemini-3.5-flash-lite"): Promise<number> {
   const key = getTodayKey(model);
+  let countFromCache = 0;
+
   const raw = await getCachedValue(key);
   if (raw !== null) {
     const val = parseInt(raw, 10);
-    if (!isNaN(val) && val > 0) return val;
+    if (!isNaN(val) && val > 0) countFromCache = val;
   }
 
   const memoryVal = inMemoryQuotaMap.get(key) || 0;
-  if (memoryVal > 0) return memoryVal;
+  countFromCache = Math.max(countFromCache, memoryVal);
 
-  // Ground-truth database fallback count for gemini-3.6-flash
-  if (model === "gemini-3.6-flash") {
-    try {
-      const todayStart = getStartOfTodayUTC();
+  // Ground-truth database fallback count
+  let dbCount = 0;
+  try {
+    const todayStart = getStartOfTodayUTC();
+    if (model === "gemini-3.6-flash") {
       const todayCourses = await db.query.courses.findMany({
         where: gte(courses.createdAt, todayStart),
       });
-      const dbCount = todayCourses.length;
-      if (dbCount > 0) {
-        await setCachedValue(key, String(dbCount), 86400);
-        inMemoryQuotaMap.set(key, dbCount);
-        return dbCount;
-      }
-    } catch (e) {
-      console.warn("DB fallback query for quota status failed:", e);
+      dbCount = todayCourses.length;
+    } else if (model === "gemini-3.5-flash-lite") {
+      const todayBuddyMsgs = await db.query.studyBuddyMessages.findMany({
+        where: and(
+          eq(studyBuddyMessages.role, "ai"),
+          gte(studyBuddyMessages.createdAt, todayStart)
+        ),
+      });
+      dbCount = todayBuddyMsgs.length;
     }
+  } catch (e) {
+    console.warn(`DB fallback query for ${model} quota status failed:`, e);
   }
 
-  return 0;
+  const finalCount = Math.max(countFromCache, dbCount);
+  if (finalCount > countFromCache && finalCount > 0) {
+    await setCachedValue(key, String(finalCount), 86400);
+    inMemoryQuotaMap.set(key, finalCount);
+  }
+
+  return finalCount;
 }
+
 
 /**
  * Increments daily usage counter for a given model.

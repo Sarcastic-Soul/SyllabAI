@@ -2,19 +2,28 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Mic,
+  MicOff,
   Bot,
   VolumeX,
+  Volume2,
   ArrowLeft,
-  MousePointer2,
-  Hand,
   Trash2,
+  Send,
+  AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { askStudyBuddy, getConversationHistory, clearConversationHistory } from "@/lib/actions/studybuddy.actions";
+import {
+  askStudyBuddy,
+  getConversationHistory,
+  clearConversationHistory,
+} from "@/lib/actions/studybuddy.actions";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 
 interface StudyBuddyProps {
   courseTopic: string;
@@ -33,32 +42,25 @@ export default function StudyBuddyInteractive({
   courseTopic,
   courseStructure,
 }: StudyBuddyProps) {
-  const [isSupported, setIsSupported] = useState(true);
+  const [isSttSupported, setIsSttSupported] = useState(false);
+  const [isTtsSupported, setIsTtsSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState("");
+  const [speechError, setSpeechError] = useState<string | null>(null);
 
-  // Interaction and Data State
-  const [interactionMode, setInteractionMode] = useState<"toggle" | "ptt">(
-    "ptt",
-  );
-  const [transcript, setTranscript] = useState("");
   const [conversation, setConversation] = useState<Message[]>([
     {
       id: "welcome",
       role: "ai",
-      text: "Hi there! I'm your Study Buddy. Hold the Spacebar or the microphone button and ask me anything about this course.",
+      text: "Hi there! I'm your Study Buddy. Ask me anything about this course.",
     },
   ]);
-  const [availableVoices, setAvailableVoices] = useState<
-    SpeechSynthesisVoice[]
-  >([]);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   const recognitionRef = useRef<any>(null);
-  const isHoldingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // FIX: Storing utterances here prevents the Chrome Garbage Collection bug from randomly stopping audio!
   const currentUtterances = useRef<SpeechSynthesisUtterance[]>([]);
 
   // Load Conversation History
@@ -72,7 +74,7 @@ export default function StudyBuddyInteractive({
               id: msg.id,
               role: msg.role as "user" | "ai",
               text: msg.content,
-            })),
+            }))
           );
         }
       } catch (err) {
@@ -85,66 +87,93 @@ export default function StudyBuddyInteractive({
   // Auto-scroll chat to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation, transcript, isProcessing]);
+  }, [conversation, isProcessing, isListening]);
 
-  // Initialize Speech APIs
+  // Initialize & Detect Speech Capabilities
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // 1. STT Detection
       const SpeechRecognition =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (!SpeechRecognition || !window.speechSynthesis) {
-        setIsSupported(false);
-        return;
+
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = false;
+          recognition.interimResults = true;
+          recognition.lang = "en-US";
+
+          recognition.onstart = () => {
+            setIsListening(true);
+            setSpeechError(null);
+          };
+
+          recognition.onresult = (event: any) => {
+            let currentTranscript = "";
+            for (let i = 0; i < event.results.length; i++) {
+              currentTranscript += event.results[i][0].transcript;
+            }
+            setInputValue(currentTranscript);
+          };
+
+          recognition.onerror = (event: any) => {
+            setIsListening(false);
+            if (event.error === "network") {
+              setSpeechError("Voice recognition network error. You can type your message below.");
+            } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+              setSpeechError("Microphone access denied or unsupported.");
+            } else if (event.error !== "no-speech" && event.error !== "aborted") {
+              setSpeechError(`Voice error: ${event.error}`);
+            }
+          };
+
+          recognition.onend = () => {
+            setIsListening(false);
+          };
+
+          recognitionRef.current = recognition;
+          setIsSttSupported(true);
+        } catch (e) {
+          setIsSttSupported(false);
+        }
+      } else {
+        setIsSttSupported(false);
       }
 
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
+      // 2. TTS Detection
+      if (window.speechSynthesis) {
+        const updateVoices = () => {
+          const voices = window.speechSynthesis.getVoices();
+          setAvailableVoices(voices);
+          setIsTtsSupported(voices.length > 0);
+        };
 
-      // Bind native hardware state to our React state
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-
-      recognition.onresult = (event: any) => {
-        let currentTranscript = "";
-        for (let i = 0; i < event.results.length; i++) {
-          currentTranscript += event.results[i][0].transcript;
-        }
-        setTranscript(currentTranscript);
-      };
-
-      recognition.onerror = (event: any) => {
-        // FIX: Ignore expected STT statuses to stop Next.js overlay crashes
-        if (event.error !== "no-speech" && event.error !== "aborted") {
-          console.warn("Speech Recognition Warning:", event.error);
-        }
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-
-      const loadVoices = () => {
-        setAvailableVoices(window.speechSynthesis.getVoices());
-      };
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+        updateVoices();
+        window.speechSynthesis.onvoiceschanged = updateVoices;
+      } else {
+        setIsTtsSupported(false);
+      }
     }
 
     return () => {
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
-      recognitionRef.current?.stop();
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      try {
+        recognitionRef.current?.stop();
+      } catch (e) {}
     };
   }, []);
 
   const handleClearHistory = async () => {
     try {
       await clearConversationHistory(courseId);
+      stopAudio();
       setConversation([
         {
           id: "welcome",
           role: "ai",
-          text: "Hi there! I'm your Study Buddy. Hold the Spacebar or the microphone button and ask me anything about this course.",
+          text: "Hi there! I'm your Study Buddy. Ask me anything about this course.",
         },
       ]);
     } catch (err) {
@@ -152,138 +181,99 @@ export default function StudyBuddyInteractive({
     }
   };
 
-  // --- Core Actions ---
-  const startListening = () => {
-    if (isListening || isProcessing) return;
-
-    // Stop any current audio immediately
+  const toggleListening = () => {
+    if (!isSttSupported) return;
+    setSpeechError(null);
     stopAudio();
 
-    setTranscript("");
-
-    try {
-      recognitionRef.current?.start();
-      setIsListening(true);
-    } catch (e) {
-      // FIX: Silently ignore InvalidStateError if it starts too fast
-      setIsListening(true);
-    }
-  };
-
-  const stopAndSend = () => {
-    try {
-      recognitionRef.current?.stop();
-    } catch (e) {
-      // Silently catch native stop errors
-    }
-
-    setIsListening(false);
-
-    if (transcript.trim().length > 0) {
-      handleAskBuddy(transcript.trim());
+    if (isListening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch (e) {}
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current?.start();
+      } catch (e) {
+        setIsListening(true);
+      }
     }
   };
 
   const stopAudio = () => {
-    if (window.speechSynthesis) {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
-      currentUtterances.current = []; // Clear the reference array
-      setIsSpeaking(false);
+      currentUtterances.current = [];
+      setSpeakingMessageId(null);
     }
   };
 
-  const handleAskBuddy = async (question: string) => {
-    setIsProcessing(true);
-    setTranscript(""); // Clear live transcript from screen
-
-    // Append User Message
-    setConversation((prev) => [
-      ...prev,
-      { id: Date.now().toString(), role: "user", text: question },
-    ]);
-
-    try {
-      const answer = await askStudyBuddy(
-        question,
-        courseTopic,
-        courseStructure,
-        courseId,
-      );
-
-      // Append AI Message
-      const aiResponseText = typeof answer === "string" ? answer : answer.answer;
-      setConversation((prev) => [
-        ...prev,
-        { id: (Date.now() + 1).toString(), role: "ai", text: aiResponseText },
-      ]);
-      speakResponse(aiResponseText);
-    } catch (error) {
-      setConversation((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: "ai",
-          text: "Sorry, I had trouble processing that. Please try again.",
-        },
-      ]);
-    } finally {
-      setIsProcessing(false);
-    }
+  const stripMarkdownAndEmojis = (rawText: string): string => {
+    return rawText
+      .replace(/```[\s\S]*?```/g, "")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/[*_~#>-]/g, " ")
+      .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
+      .replace(/\s+/g, " ")
+      .trim();
   };
 
-  const speakResponse = (text: string) => {
-    if (!window.speechSynthesis) return;
+  const speakMessage = (messageId: string, text: string) => {
+    if (!isTtsSupported || typeof window === "undefined" || !window.speechSynthesis) return;
 
-    // Clear any audio that might be hanging
-    window.speechSynthesis.cancel();
-    currentUtterances.current = []; // Clear old references
+    if (speakingMessageId === messageId) {
+      stopAudio();
+      return;
+    }
 
-    // Delay slightly to bypass the Safari/Chrome race condition bug
+    stopAudio();
+
+    const cleanText = stripMarkdownAndEmojis(text);
+    if (!cleanText) return;
+
     setTimeout(() => {
-      // Break the long response into smaller sentences to stop the engine from choking
-      const chunks = text.match(/[^.!?]+[.!?]+/g) || [text];
+      const chunks = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
+      setSpeakingMessageId(messageId);
 
       chunks.forEach((chunk, index) => {
-        if (!chunk.trim()) return;
+        const trimmedChunk = chunk.trim();
+        if (!trimmedChunk) return;
 
-        const utterance = new SpeechSynthesisUtterance(chunk.trim());
-
-        // Save utterance to our ref so Chrome's Garbage Collector doesn't delete it
+        const utterance = new SpeechSynthesisUtterance(trimmedChunk);
         currentUtterances.current.push(utterance);
-
         utterance.lang = "en-US";
 
-        // Fallback robust voice selection
+        const voices = availableVoices.length > 0
+          ? availableVoices
+          : window.speechSynthesis.getVoices();
+
         const preferredVoice =
-          availableVoices.find(
+          voices.find(
             (v) =>
               v.lang.includes("en") &&
-              (v.name.includes("Google") || v.name.includes("Natural")),
+              (v.name.includes("Google") || v.name.includes("Natural"))
           ) ||
-          availableVoices.find((v) => v.lang.includes("en")) ||
-          availableVoices[0];
+          voices.find((v) => v.lang.includes("en")) ||
+          voices[0];
 
         if (preferredVoice) utterance.voice = preferredVoice;
-
         utterance.rate = 1.0;
 
-        // Manage animation state for the first chunk
-        if (index === 0) {
-          utterance.onstart = () => setIsSpeaking(true);
-        }
-
-        // Catch the 'end' event on the final chunk
         if (index === chunks.length - 1) {
-          utterance.onend = () => setIsSpeaking(false);
+          utterance.onend = () => setSpeakingMessageId(null);
         }
 
-        // FIX: Supress "interrupted" or "canceled" errors. These happen gracefully when the user hits 'Stop'.
-        // Changing console.error to console.warn completely stops Next.js from throwing dev crashes.
         utterance.onerror = (e) => {
-          if (e.error !== "interrupted" && e.error !== "canceled") {
+          if (
+            e.error !== "interrupted" &&
+            e.error !== "canceled" &&
+            e.error !== "synthesis-failed" &&
+            e.error !== "synthesis-unavailable"
+          ) {
             console.warn("TTS Hardware Warning:", e.error);
           }
-          setIsSpeaking(false);
+          setSpeakingMessageId(null);
         };
 
         window.speechSynthesis.speak(utterance);
@@ -291,76 +281,65 @@ export default function StudyBuddyInteractive({
     }, 50);
   };
 
-  // --- Interaction Handlers ---
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const messageText = inputValue.trim();
+    if (!messageText || isProcessing) return;
 
-  // 1. Keyboard Spacebar (Push to Talk)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.code === "Space" &&
-        interactionMode === "ptt" &&
-        !e.repeat &&
-        e.target === document.body
-      ) {
-        e.preventDefault();
-        isHoldingRef.current = true;
-        startListening();
+    if (isListening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch (e) {}
+      setIsListening(false);
+    }
+
+    setInputValue("");
+    setSpeechError(null);
+    setIsProcessing(true);
+    stopAudio();
+
+    const userMsgId = Date.now().toString();
+    setConversation((prev) => [
+      ...prev,
+      { id: userMsgId, role: "user", text: messageText },
+    ]);
+
+    try {
+      const answer = await askStudyBuddy(
+        messageText,
+        courseTopic,
+        courseStructure,
+        courseId
+      );
+
+      const aiResponseText = typeof answer === "string" ? answer : answer.answer;
+      const aiMsgId = (Date.now() + 1).toString();
+
+      setConversation((prev) => [
+        ...prev,
+        { id: aiMsgId, role: "ai", text: aiResponseText },
+      ]);
+
+      if (isTtsSupported) {
+        speakMessage(aiMsgId, aiResponseText);
       }
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space" && interactionMode === "ptt") {
-        e.preventDefault();
-        isHoldingRef.current = false;
-        stopAndSend();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [interactionMode, isListening, transcript, isProcessing]);
-
-  // 2. Mouse/Touch Button Handlers
-  const handlePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    if (interactionMode === "ptt") {
-      isHoldingRef.current = true;
-      startListening();
-    } else {
-      if (isListening) stopAndSend();
-      else startListening();
+    } catch (error) {
+      setConversation((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "ai",
+          text: "Sorry, I ran into an error processing your request. Please try again.",
+        },
+      ]);
+    } finally {
+      setIsProcessing(false);
     }
   };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    e.preventDefault();
-    if (interactionMode === "ptt" && isHoldingRef.current) {
-      isHoldingRef.current = false;
-      stopAndSend();
-    }
-  };
-
-  if (!isSupported) {
-    return (
-      <div className="max-w-2xl mx-auto mt-20 p-8 border-2 border-destructive/20 rounded-2xl bg-destructive/5 text-center space-y-4">
-        <h3 className="text-2xl font-bold">Voice Features Unavailable</h3>
-        <p className="text-muted-foreground">
-          Your browser does not support the Web Speech API. Please use Google
-          Chrome or Microsoft Edge.
-        </p>
-        <Link href={`/courses/${courseId}`}>
-          <Button>Go Back</Button>
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 h-[90vh] flex flex-col">
-      {/* Top Navigation & Settings (Fixed Header) */}
+      {/* Top Header */}
       <div className="flex items-center justify-between pb-4 border-b shrink-0">
         <Link href={`/courses/${courseId}`}>
           <Button
@@ -368,13 +347,40 @@ export default function StudyBuddyInteractive({
             size="sm"
             className="text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />{" "}
+            <ArrowLeft className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">Back to Course</span>
           </Button>
         </Link>
 
+        {/* Center: Bot Avatar Status Icon */}
+        <div className="relative flex items-center justify-center">
+          {speakingMessageId && (
+            <div className="absolute w-9 h-9 bg-orange-500/30 rounded-full animate-ping" />
+          )}
+          {isListening && (
+            <div className="absolute w-9 h-9 bg-destructive/30 rounded-full animate-pulse" />
+          )}
+          <div
+            className={cn(
+              "relative z-10 p-2 rounded-full transition-all duration-300 shadow-sm",
+              speakingMessageId
+                ? "bg-orange-500 text-white shadow-orange-500/50"
+                : isListening
+                ? "bg-destructive text-white shadow-destructive/50"
+                : "bg-secondary text-muted-foreground"
+            )}
+          >
+            <Bot className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Right: Study Buddy AI Pill & Actions */}
         <div className="flex items-center gap-2">
-          {/* Clear History Button */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5" />
+            Study Buddy AI
+          </div>
+
           <Button
             variant="ghost"
             size="icon"
@@ -384,162 +390,154 @@ export default function StudyBuddyInteractive({
           >
             <Trash2 className="w-4 h-4" />
           </Button>
-
-          {/* Mode Toggle Switch */}
-          <div className="flex items-center bg-secondary/50 p-1 rounded-lg">
-            <button
-              onClick={() => setInteractionMode("ptt")}
-            className={cn(
-              "px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-2",
-              interactionMode === "ptt"
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Hand className="w-3.5 h-3.5" /> Hold to Talk
-          </button>
-          <button
-            onClick={() => setInteractionMode("toggle")}
-            className={cn(
-              "px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-2",
-              interactionMode === "toggle"
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <MousePointer2 className="w-3.5 h-3.5" /> Tap to Talk
-          </button>
-        </div>
         </div>
       </div>
 
-      {/* Avatar Area (Fixed Header) */}
-      <div className="flex items-center justify-center py-6 shrink-0">
-        <div className="relative flex items-center justify-center">
-          {isSpeaking && (
-            <>
-              <div className="absolute w-28 h-28 bg-orange-500/20 rounded-full animate-ping" />
-              <div className="absolute w-24 h-24 bg-orange-500/30 rounded-full animate-pulse" />
-            </>
-          )}
-          {isListening && (
-            <div className="absolute w-24 h-24 bg-orange-500/20 rounded-full animate-pulse" />
-          )}
-          <div
-            className={cn(
-              "relative z-10 p-4 rounded-full transition-all duration-500 shadow-lg",
-              isSpeaking
-                ? "bg-orange-500 shadow-orange-500/50 scale-110"
-                : isListening
-                  ? "bg-orange-500 shadow-orange-500/50 scale-105"
-                  : "bg-secondary",
-            )}
-          >
-            <Bot
-              className={cn(
-                "w-10 h-10",
-                isSpeaking || isListening
-                  ? "text-white"
-                  : "text-muted-foreground",
-              )}
-            />
-          </div>
-        </div>
-      </div>
 
-      {/* Chat History Area (Scrollable Middle) */}
+
+
+      {/* Scrollable Message Container */}
       <div className="flex-1 overflow-y-auto px-2 space-y-4 mb-4 scrollbar-thin">
         {conversation.map((msg) => (
           <div
             key={msg.id}
             className={cn(
               "flex flex-col max-w-[85%]",
-              msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start",
+              msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
             )}
           >
-            <span className="text-xs font-medium text-muted-foreground mb-1 px-1">
-              {msg.role === "user" ? "You" : "Study Buddy"}
-            </span>
+            <div className="flex items-center gap-2 mb-1 px-1">
+              <span className="text-xs font-medium text-muted-foreground">
+                {msg.role === "user" ? "You" : "Study Buddy"}
+              </span>
+
+              {/* Render Read Aloud button ONLY if TTS is supported on the client */}
+              {msg.role === "ai" && isTtsSupported && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 text-muted-foreground hover:text-foreground"
+                  onClick={() => speakMessage(msg.id, msg.text)}
+                  title={
+                    speakingMessageId === msg.id ? "Stop Reading" : "Read Aloud"
+                  }
+                >
+                  {speakingMessageId === msg.id ? (
+                    <VolumeX className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+                  ) : (
+                    <Volume2 className="w-3.5 h-3.5" />
+                  )}
+                </Button>
+              )}
+            </div>
+
             <div
               className={cn(
-                "px-4 py-3 rounded-2xl text-sm md:text-base shadow-sm",
+                "px-4 py-3 rounded-2xl text-sm md:text-base shadow-sm leading-relaxed",
                 msg.role === "user"
-                  ? "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 rounded-br-none"
-                  : "bg-secondary text-foreground rounded-bl-none",
+                  ? "bg-orange-500 text-white rounded-br-none"
+                  : "bg-secondary text-foreground rounded-bl-none border border-border/50"
               )}
             >
-              {msg.text}
+              {msg.role === "ai" ? (
+                <MarkdownRenderer content={msg.text} />
+              ) : (
+                msg.text
+              )}
             </div>
           </div>
         ))}
 
-        {/* Live Transcript Bubble */}
-        {isListening && transcript && (
-          <div className="flex flex-col max-w-[85%] ml-auto items-end opacity-70">
-            <span className="text-xs font-medium text-muted-foreground mb-1 px-1">
-              You
-            </span>
-            <div className="px-4 py-3 rounded-2xl text-sm md:text-base bg-orange-500/10 text-orange-600 border border-orange-500/20 border-dashed rounded-br-none shadow-sm">
-              {transcript} <span className="animate-pulse">...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Loading Bubble */}
+        {/* Loading Indicator */}
         {isProcessing && (
           <div className="flex flex-col max-w-[85%] mr-auto items-start">
             <span className="text-xs font-medium text-muted-foreground mb-1 px-1">
               Study Buddy
             </span>
-            <div className="px-4 py-3 rounded-2xl bg-secondary text-muted-foreground flex items-center gap-2 rounded-bl-none shadow-sm">
+            <div className="px-4 py-3 rounded-2xl bg-secondary text-muted-foreground flex items-center gap-2 rounded-bl-none shadow-sm border border-border/50">
               <Spinner className="w-4 h-4" /> Thinking...
             </div>
           </div>
         )}
 
-        {/* Invisible div to scroll to bottom automatically */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Controls Area (Fixed at Bottom) */}
-      <div className="shrink-0 flex flex-col items-center justify-center pt-2 border-t">
-        <p className="text-xs text-muted-foreground font-medium mb-3">
-          {interactionMode === "ptt"
-            ? "Hold space or button to Speak"
-            : "Tap button to Start/Stop"}
-        </p>
-
-        <div className="flex items-center gap-4 relative w-full justify-center">
-          <Button
-            size="lg"
-            variant={isListening ? "default" : "secondary"}
-            className={cn(
-              "w-20 h-20 rounded-full shadow-lg transition-all select-none touch-none",
-              isListening
-                ? "bg-orange-500 hover:bg-orange-600 animate-pulse shadow-orange-500/40 text-white"
-                : "hover:scale-105",
-            )}
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp} // Safety net if they drag off the button
-            disabled={isProcessing}
+      {/* Speech Error Alert Banner */}
+      {speechError && (
+        <div className="mb-2 p-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-between shrink-0 animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{speechError}</span>
+          </div>
+          <button
+            onClick={() => setSpeechError(null)}
+            className="text-xs hover:underline font-semibold ml-2"
           >
-            <Mic className="w-8 h-8" />
-          </Button>
+            Dismiss
+          </button>
+        </div>
+      )}
 
-          {isSpeaking && (
+      {/* Chat Input Controls (Fixed at Bottom) */}
+      <form
+        onSubmit={handleSendMessage}
+        className="shrink-0 flex items-center gap-2 pt-2 border-t"
+      >
+        <div className="relative flex-1 flex items-center">
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder={
+              isListening
+                ? "Listening... Speak now"
+                : "Ask your Study Buddy anything..."
+            }
+            disabled={isProcessing}
+            className={cn(
+              "py-6 text-sm md:text-base rounded-xl transition-all",
+              isSttSupported ? "pr-10" : "px-4",
+              isListening && "border-destructive ring-1 ring-destructive/50"
+            )}
+          />
+
+          {/* Render Mic Button ONLY if STT is supported on the client */}
+          {isSttSupported && (
             <Button
-              variant="outline"
+              type="button"
+              variant="ghost"
               size="icon"
-              className="absolute right-0 w-10 h-10 rounded-full border-destructive text-destructive hover:bg-destructive/10"
-              onClick={stopAudio}
-              title="Stop Speaking"
+              onClick={toggleListening}
+              disabled={isProcessing}
+              className={cn(
+                "absolute right-2 h-8 w-8 rounded-lg transition-colors",
+                isListening
+                  ? "bg-destructive text-white hover:bg-destructive/90 animate-pulse"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              )}
+              title={isListening ? "Stop listening" : "Speak your message"}
             >
-              <VolumeX className="w-4 h-4" />
+              {isListening ? (
+                <MicOff className="w-4 h-4" />
+              ) : (
+                <Mic className="w-4 h-4" />
+              )}
             </Button>
           )}
         </div>
-      </div>
+
+        <Button
+          type="submit"
+          disabled={!inputValue.trim() || isProcessing}
+          className="h-12 px-5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white shrink-0 shadow-md transition-all disabled:opacity-50"
+        >
+          {isProcessing ? (
+            <Spinner className="w-5 h-5" />
+          ) : (
+            <Send className="w-5 h-5" />
+          )}
+        </Button>
+      </form>
     </div>
   );
 }
