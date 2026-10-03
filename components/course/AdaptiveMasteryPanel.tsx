@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AdaptiveMasteryMetrics } from "@/lib/adaptive";
-import { Brain, TrendingUp, AlertTriangle, Sparkles } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AdaptiveMasteryPanelProps {
   courseId: string;
@@ -11,45 +11,59 @@ interface AdaptiveMasteryPanelProps {
 
 export function AdaptiveMasterySkeleton() {
   return (
-    <div className="p-4 bg-card rounded-xl border shadow-xs space-y-3 animate-pulse">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-muted rounded-lg" />
-          <div className="space-y-1.5">
-            <div className="w-32 h-3.5 bg-muted rounded-xs" />
-            <div className="w-20 h-2.5 bg-muted rounded-xs" />
-          </div>
-        </div>
-        <div className="w-16 h-5 bg-muted rounded-full" />
+    <div
+      aria-busy="true"
+      aria-label="Loading mastery"
+      className="space-y-4 rounded-xl border border-border bg-card p-5"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-4 w-28" />
       </div>
-      <div className="w-full h-2 bg-muted rounded-full" />
+      <Skeleton className="h-9 w-24" />
+      <Skeleton className="h-1.5 w-full rounded-full" />
+      <div className="space-y-2.5 pt-1">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-4/5" />
+      </div>
     </div>
   );
 }
 
 export default function AdaptiveMasteryPanel({ courseId }: AdaptiveMasteryPanelProps) {
-  const [metrics, setMetrics] = useState<AdaptiveMasteryMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const fetchMetrics = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/courses/${courseId}/adaptive`);
-      if (!res.ok) throw new Error("Failed to load adaptive metrics");
-      const data = await res.json();
-      setMetrics(data);
-    } catch (e: any) {
-      setError(e.message || "Could not calculate adaptive mastery");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // The result remembers which course it belongs to, so "loading" is simply
+  // "no result for the current course yet".
+  const [result, setResult] = useState<{
+    courseId: string;
+    metrics: AdaptiveMasteryMetrics | null;
+    error: string;
+  } | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const fetchMetrics = async () => {
+      try {
+        const res = await fetch(`/api/courses/${courseId}/adaptive`);
+        if (!res.ok) throw new Error("Failed to load adaptive metrics");
+        const data: AdaptiveMasteryMetrics = await res.json();
+        if (!cancelled) setResult({ courseId, metrics: data, error: "" });
+      } catch (e: unknown) {
+        const message =
+          (e instanceof Error && e.message) || "Could not calculate adaptive mastery";
+        if (!cancelled) setResult({ courseId, metrics: null, error: message });
+      }
+    };
+
     fetchMetrics();
+    return () => {
+      cancelled = true;
+    };
   }, [courseId]);
+
+  const loading = result?.courseId !== courseId;
+  const metrics = loading ? null : result.metrics;
+  const error = loading ? "" : result.error;
 
   if (loading) {
     return <AdaptiveMasterySkeleton />;
@@ -61,105 +75,89 @@ export default function AdaptiveMasteryPanel({ courseId }: AdaptiveMasteryPanelP
 
   const { totalCards, reviewedCards, masteryScore, retentionLevel, recommendedDifficulty, weakConcepts } = metrics;
 
-  // Render a compact, subtle inline alert if no flashcards have been reviewed yet
+  // Nothing reviewed yet: one short line that says what to do next
   if (totalCards === 0 || reviewedCards === 0) {
     return (
-      <div className="p-3 px-4 bg-muted/30 border border-dashed border-border rounded-xl flex items-center gap-3 text-xs text-muted-foreground">
-        <Brain className="w-4 h-4 text-primary shrink-0" />
-        <p className="flex-1">
-          <strong className="font-medium text-foreground">Adaptive Engine:</strong> Review flashcards in any chapter to unlock personalized mastery scores & automatic quiz scaling.
+      <div className="rounded-xl border border-dashed border-foreground/25 p-5">
+        <h3 className="text-sm font-semibold">Mastery</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          No score yet. Open a chapter and review its flashcards. Your score and
+          the cards you find hard will show up here.
         </p>
       </div>
     );
   }
 
-  const getRetentionBadgeStyle = () => {
-    switch (retentionLevel) {
-      case "Mastered":
-        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
-      case "Review Recommended":
-        return "bg-amber-500/10 text-amber-500 border-amber-500/20";
-      default:
-        return "bg-rose-500/10 text-rose-500 border-rose-500/20";
-    }
-  };
+  const retentionDot =
+    retentionLevel === "Mastered"
+      ? "bg-success"
+      : retentionLevel === "Review Recommended"
+        ? "bg-warning"
+        : "bg-destructive";
 
   return (
-    <div className="p-5 bg-card border border-border rounded-xl shadow-xs space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-primary/10 text-primary rounded-lg shadow-xs">
-            <Brain className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
-              Adaptive Mastery Engine
-              <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground border border-border">
-                SM-2 Powered
-              </span>
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {reviewedCards} of {totalCards} flashcards reviewed
-            </p>
-          </div>
-        </div>
-
-        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getRetentionBadgeStyle()}`}>
+    <section
+      aria-label="Mastery"
+      className="space-y-4 rounded-xl border border-border bg-card p-5"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <h3 className="text-sm font-semibold">Mastery</h3>
+        <p className="flex items-center gap-1.5 text-xs font-medium">
+          <span aria-hidden className={`size-2 rounded-full ${retentionDot}`} />
           {retentionLevel}
-        </span>
+        </p>
       </div>
 
-      {/* Progress Bar & Scores */}
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-xs font-semibold text-foreground">
-          <span>Overall Retention Score</span>
-          <span className="text-primary font-bold">{masteryScore}%</span>
-        </div>
-        <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+      <div className="space-y-2">
+        <p className="flex items-baseline gap-2">
+          <span className="font-mono text-4xl leading-none font-medium tabular-nums">
+            {masteryScore}%
+          </span>
+          <span className="text-sm text-muted-foreground">retention</span>
+        </p>
+        <div
+          className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/10"
+          role="progressbar"
+          aria-valuenow={masteryScore}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Retention score"
+        >
           <div
-            className="bg-primary h-full rounded-full transition-all duration-700 ease-out"
+            className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out motion-reduce:transition-none"
             style={{ width: `${masteryScore}%` }}
           />
         </div>
+        <p className="font-mono text-xs text-muted-foreground">
+          {reviewedCards}/{totalCards} flashcards reviewed
+        </p>
       </div>
 
-      {/* Grid Indicators */}
-      <div className="grid grid-cols-2 gap-3 pt-1">
-        <div className="p-2.5 bg-muted/40 border border-border rounded-lg space-y-0.5">
-          <div className="flex items-center text-[11px] text-muted-foreground">
-            <TrendingUp className="w-3 h-3 mr-1 text-primary" />
-            Recommended Difficulty
-          </div>
-          <p className="font-bold text-foreground text-xs">{recommendedDifficulty}</p>
+      <dl className="divide-y divide-border border-t border-border text-sm">
+        <div className="flex items-baseline justify-between gap-4 py-2.5">
+          <dt className="text-muted-foreground">Suggested level</dt>
+          <dd className="text-right font-medium">{recommendedDifficulty}</dd>
         </div>
-
-        <div className="p-2.5 bg-muted/40 border border-border rounded-lg space-y-0.5">
-          <div className="flex items-center text-[11px] text-muted-foreground">
-            <Sparkles className="w-3 h-3 mr-1 text-primary" />
-            AI Quiz Adaptation
-          </div>
-          <p className="font-bold text-foreground text-xs">
-            {weakConcepts.length > 0 ? "Targeting Weak Concepts" : "Advanced Application"}
-          </p>
+        <div className="flex items-baseline justify-between gap-4 py-2.5">
+          <dt className="text-muted-foreground">Next quiz</dt>
+          <dd className="text-right font-medium">
+            {weakConcepts.length > 0 ? "Covers your weak cards" : "Harder, applied questions"}
+          </dd>
         </div>
-      </div>
+      </dl>
 
-      {/* Weak Concepts Warning Alert */}
       {weakConcepts.length > 0 && (
-        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-1.5 text-xs text-amber-500">
-          <div className="flex items-center font-semibold">
-            <AlertTriangle className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-            Focus Areas
-          </div>
-          <ul className="space-y-0.5 pl-4 list-disc text-muted-foreground text-[11px]">
+        <div className="border-l-2 border-warning pl-3">
+          <h4 className="text-xs font-semibold">Review these next</h4>
+          <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground">
             {weakConcepts.map((item, idx) => (
-              <li key={idx} className="truncate">
-                <strong className="font-medium text-foreground">{item.front}</strong>
+              <li key={idx} className="truncate" title={item.front}>
+                {item.front}
               </li>
             ))}
           </ul>
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -1,8 +1,10 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getAnalyticsTrends } from "@/lib/queries/analytics";
+import { getGenerationLogStats } from "@/lib/queries/admin";
 import AdminStatsClient from "@/components/admin/AdminStatsClient";
-import { ShieldCheck, BarChart2, BookOpen } from "lucide-react";
+import GenerationLogSection from "@/components/admin/GenerationLogSection";
+import { ShieldCheck, ChartBar, BookOpen } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
 const ADMIN_EMAIL = "anishisbusy@gmail.com";
@@ -19,7 +21,14 @@ export default async function AdminStatsPage() {
     redirect("/dashboard");
   }
 
-  const trends = await getAnalyticsTrends();
+  const [trends, generationStats] = await Promise.all([
+    getAnalyticsTrends(),
+    // The generation_logs table may not exist yet (migration not applied); show an empty state then.
+    getGenerationLogStats().catch((err) => {
+      console.warn("Could not load generation log stats:", err);
+      return null;
+    }),
+  ]);
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
@@ -47,12 +56,14 @@ export default async function AdminStatsPage() {
             href="/admin/stats"
             className="px-3 py-1.5 rounded-lg bg-card text-primary shadow-xs flex items-center gap-1.5 border border-border"
           >
-            <BarChart2 className="w-3.5 h-3.5" /> Analytics
+            <ChartBar className="w-3.5 h-3.5" /> Analytics
           </Link>
         </div>
       </div>
 
       <AdminStatsClient data={trends} />
+
+      <GenerationLogSection stats={generationStats} />
     </div>
   );
 }

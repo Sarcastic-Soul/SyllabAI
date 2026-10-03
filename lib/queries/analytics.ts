@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { events, courses, quizzes } from "@/lib/db/schema";
-import { count, sql, desc, gte, eq } from "drizzle-orm";
+import { count, sql, gte, eq } from "drizzle-orm";
 
 export interface DailyTrendItem {
   date: string; // "YYYY-MM-DD"

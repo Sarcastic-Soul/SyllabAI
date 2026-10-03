@@ -23,7 +23,7 @@ export function SubmitButton({
 
     return (
         <Button type="submit" variant={variant} size={size} className={className} disabled={pending}>
-            {pending && <Spinner className="mr-2 h-4 w-4" />}
+            {pending && <Spinner />}
             {!pending && icon}
             {pending ? loadingText : defaultText}
         </Button>

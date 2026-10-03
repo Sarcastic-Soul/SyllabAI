@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { Activity, Clock, Target } from "lucide-react";
 import type { UserCourseWithChapters, UserDb } from "@/lib/db/drizzle.types";
 
 export default function DashboardStats({
@@ -56,105 +55,122 @@ export default function DashboardStats({
         return days;
     }, [activityMap]);
 
+    const streak = userDb?.currentStreak || 0;
+    const activeDays = heatmapDays.filter((d) => d.count > 0).length;
+
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* Daily Streak Heatmap */}
-            <div className="p-6 border rounded-xl bg-card space-y-4">
-                <div className="flex items-center gap-2 font-semibold">
-                    <Activity className="w-5 h-5 text-primary" />
-                    <span>Activity (Last 30 Days)</span>
+        <section
+            aria-label="Your stats"
+            className="grid grid-cols-1 divide-y divide-border rounded-xl border border-border bg-card md:grid-cols-3 md:divide-x md:divide-y-0"
+        >
+            {/* Streak and 30-day activity */}
+            <div className="space-y-4 p-5 sm:p-6">
+                <div className="flex items-baseline justify-between gap-3">
+                    <h2 className="text-sm font-semibold">Last 30 days</h2>
+                    <p className="font-mono text-xs text-muted-foreground">
+                        {activeDays} active {activeDays === 1 ? "day" : "days"}
+                    </p>
                 </div>
-                <div className="flex flex-wrap gap-1">
+                <p className="flex items-baseline gap-2">
+                    <span className="font-mono text-4xl font-medium tabular-nums leading-none">
+                        {streak}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                        day streak
+                    </span>
+                </p>
+                <div
+                    className="grid grid-cols-[repeat(15,minmax(0,1fr))] gap-1"
+                    role="img"
+                    aria-label={`Activity for the last 30 days: ${activeDays} active days`}
+                >
                     {heatmapDays.map((day, i) => (
                         <div
                             key={i}
-                            title={`${day.date}: ${day.count} activities`}
-                            className={`w-4 h-4 rounded-sm ${
+                            title={`${day.date}: ${day.count} ${day.count === 1 ? "activity" : "activities"}`}
+                            className={`aspect-square rounded-[3px] ${
                                 day.count === 0
-                                    ? "bg-secondary"
+                                    ? "bg-foreground/[0.07]"
                                     : day.count < 3
-                                      ? "bg-primary/40"
+                                      ? "bg-primary/35"
                                       : day.count < 5
-                                        ? "bg-primary/70"
+                                        ? "bg-primary/65"
                                         : "bg-primary"
                             }`}
                         />
                     ))}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                    Current Streak: {userDb?.currentStreak || 0} days
-                </p>
             </div>
 
-            {/* Time Spent Per Course */}
-            <div className="p-6 border rounded-xl bg-card space-y-4">
-                <div className="flex items-center gap-2 font-semibold">
-                    <Clock className="w-5 h-5 text-primary" />
-                    <span>Time Spent</span>
-                </div>
-                <div className="space-y-3 max-h-[120px] overflow-y-auto pr-2">
+            {/* Time spent per course */}
+            <div className="space-y-4 p-5 sm:p-6">
+                <h2 className="text-sm font-semibold">Time spent</h2>
+                <ul className="max-h-36 space-y-2.5 overflow-y-auto pr-2">
                     {userCourses.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            No courses yet.
-                        </p>
+                        <li className="text-sm text-muted-foreground">
+                            Time shows up here once you open a lesson.
+                        </li>
                     ) : (
                         userCourses.map((course, i) => (
-                            <div
+                            <li
                                 key={i}
-                                className="flex justify-between items-center text-sm"
+                                className="flex items-baseline justify-between gap-4 text-sm"
                             >
                                 <span
-                                    className="truncate w-3/4 capitalize"
+                                    className="min-w-0 truncate capitalize"
                                     title={course.topic}
                                 >
                                     {course.topic}
                                 </span>
-                                <span className="font-medium text-muted-foreground shrink-0">
+                                <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                                     {course.timeSpent > 0
                                         ? `${Math.round(course.timeSpent / 60)} min`
                                         : `${(course.chapters?.filter((c) => c.isCompleted).length || 0) * 5} min (est)`}
                                 </span>
-                            </div>
+                            </li>
                         ))
                     )}
-                </div>
+                </ul>
             </div>
 
-            {/* Accuracy Per Topic */}
-            <div className="p-6 border rounded-xl bg-card space-y-4">
-                <div className="flex items-center gap-2 font-semibold">
-                    <Target className="w-5 h-5 text-primary" />
-                    <span>Accuracy per Topic</span>
-                </div>
-                <div className="space-y-3 max-h-[120px] overflow-y-auto pr-2">
+            {/* Quiz accuracy per course */}
+            <div className="space-y-4 p-5 sm:p-6">
+                <h2 className="text-sm font-semibold">Quiz accuracy</h2>
+                <ul className="max-h-36 space-y-2.5 overflow-y-auto pr-2">
                     {accuracyPerTopic.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            No quizzes taken.
-                        </p>
+                        <li className="text-sm text-muted-foreground">
+                            Finish a chapter quiz to see your accuracy.
+                        </li>
                     ) : (
                         accuracyPerTopic.map((topic, i) => (
-                            <div
+                            <li
                                 key={i}
-                                className="flex justify-between items-center text-sm"
+                                className="flex items-baseline justify-between gap-4 text-sm"
                             >
                                 <span
-                                    className="truncate w-3/4 capitalize"
+                                    className="min-w-0 truncate capitalize"
                                     title={topic.topic}
                                 >
                                     {topic.topic}
                                 </span>
-                                <span
-                                    className={`font-bold ${topic.accuracy > 70 ? "text-green-500" : topic.accuracy > 40 ? "text-yellow-500" : "text-red-500"}`}
-                                >
-                                    {topic.quizzesTaken > 0
-                                        ? `${topic.accuracy}%`
-                                        : "-"}
-                                </span>
-                            </div>
+                                {topic.quizzesTaken > 0 ? (
+                                    <span className="flex shrink-0 items-center gap-1.5 font-mono text-xs font-medium tabular-nums">
+                                        <span
+                                            aria-hidden
+                                            className={`size-2 rounded-full ${topic.accuracy > 70 ? "bg-success" : topic.accuracy > 40 ? "bg-warning" : "bg-destructive"}`}
+                                        />
+                                        {topic.accuracy}%
+                                    </span>
+                                ) : (
+                                    <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                                        No quiz yet
+                                    </span>
+                                )}
+                            </li>
                         ))
                     )}
-                </div>
+                </ul>
             </div>
-        </div>
+        </section>
     );
 }

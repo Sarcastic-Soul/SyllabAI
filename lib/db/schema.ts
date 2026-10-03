@@ -9,8 +9,15 @@ import {
     jsonb,
     vector,
     index,
+    customType,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql, type SQL } from "drizzle-orm";
+
+const tsvector = customType<{ data: string }>({
+    dataType() {
+        return "tsvector";
+    },
+});
 
 export const users = pgTable("users", {
     id: text("id").primaryKey(), // Clerk ID
@@ -108,13 +115,19 @@ export const documentChunks = pgTable(
             .references(() => documents.id, { onDelete: "cascade" })
             .notNull(),
         content: text("content").notNull(),
-        embedding: vector("embedding", { dimensions: 768 }), // Gemini text-embedding-004 has 768 dims
+        // gemini-embedding-001 cut down to 768 dims (outputDimensionality) and L2-normalized
+        embedding: vector("embedding", { dimensions: 768 }),
+        // Kept up to date by Postgres; used for the full-text half of hybrid search
+        contentTsv: tsvector("content_tsv").generatedAlwaysAs(
+            (): SQL => sql`to_tsvector('english', ${documentChunks.content})`
+        ),
     },
     (table) => [
         index("document_chunks_embedding_hnsw_idx").using(
             "hnsw",
             table.embedding.op("vector_cosine_ops")
         ),
+        index("document_chunks_content_tsv_idx").using("gin", table.contentTsv),
     ]
 );
 
@@ -198,3 +211,26 @@ export const events = pgTable("events", {
     metadata: jsonb("metadata").default({}).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// 10. One row per AI call (text generation, JSON generation, embedding batch) or syllabus cache hit
+export const generationLogs = pgTable(
+    "generation_logs",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        userId: text("user_id"),
+        step: text("step").notNull(), // see GenerationStep in lib/ai/log.ts
+        model: text("model").notNull(),
+        inputTokens: integer("input_tokens"),
+        outputTokens: integer("output_tokens"),
+        durationMs: integer("duration_ms").notNull(),
+        success: boolean("success").notNull(),
+        // On failure: why it failed. On a repaired row: why the first attempt was rejected.
+        errorType: text("error_type"), // see GenerationErrorType in lib/ai/log.ts
+        repaired: boolean("repaired").default(false).notNull(), // valid only after the repair retry
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+    },
+    (table) => [
+        index("generation_logs_created_at_idx").on(table.createdAt),
+        index("generation_logs_step_idx").on(table.step),
+    ]
+);

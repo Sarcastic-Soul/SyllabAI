@@ -6,7 +6,7 @@ import {
   getPopularTopics,
 } from "@/lib/queries/admin";
 import AdminDashboardClient from "@/components/admin/AdminDashboardClient";
-import { ShieldCheck, BookOpen, BarChart2 } from "lucide-react";
+import { ShieldCheck, BookOpen, ChartBar } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
 const ADMIN_EMAIL = "anishisbusy@gmail.com";
@@ -55,7 +55,7 @@ export default async function AdminDashboardPage() {
             href="/admin/stats"
             className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
           >
-            <BarChart2 className="w-3.5 h-3.5" /> Analytics
+            <ChartBar className="w-3.5 h-3.5" /> Analytics
           </Link>
         </div>
       </div>

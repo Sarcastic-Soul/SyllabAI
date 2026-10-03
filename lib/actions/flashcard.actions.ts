@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { flashcards, chapters, courses } from "@/lib/db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { flashcards, chapters } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { calculateSM2 } from "@/lib/utils/sm2";
 import { flashcardReviewSchema, flashcardQuerySchema } from "@/lib/validations";

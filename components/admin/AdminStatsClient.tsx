@@ -6,7 +6,6 @@ import {
   Area,
   BarChart,
   Bar,
-  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -17,7 +16,7 @@ import {
   QuizMetricsSummary,
   EventTypeDistributionItem,
 } from "@/lib/queries/analytics";
-import { Activity, TrendingUp, Zap, Award, BarChart3, Calendar } from "lucide-react";
+import { Pulse, Medal, ChartBar, CalendarBlank } from "@phosphor-icons/react";
 import GeminiQuotaCard from "./GeminiQuotaCard";
 
 interface AdminStatsClientProps {
@@ -27,16 +26,6 @@ interface AdminStatsClientProps {
     quizMetrics: QuizMetricsSummary;
   };
 }
-
-const BAR_COLORS = [
-  "#fe5933", // Primary Orange
-  "#3b82f6", // Vibrant Blue
-  "#10b981", // Emerald Green
-  "#8b5cf6", // Purple
-  "#f59e0b", // Amber
-  "#ec4899", // Pink
-  "#06b6d4", // Cyan
-];
 
 export default function AdminStatsClient({ data }: AdminStatsClientProps) {
   const { eventDistribution, dailyTrends, quizMetrics } = data;
@@ -49,25 +38,12 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
       <GeminiQuotaCard />
 
       {/* Metric Summary Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 bg-card border rounded-2xl shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-semibold uppercase tracking-wider">Avg Latency</span>
-            <div className="p-2 bg-amber-500/10 text-amber-500 rounded-xl">
-              <Zap className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-3xl font-extrabold text-foreground">1.8s</p>
-          <p className="text-xs text-emerald-500 font-medium flex items-center">
-            <TrendingUp className="w-3 h-3 mr-1" /> Upstash Redis Cache Accelerated
-          </p>
-        </div>
-
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="p-5 bg-card border rounded-2xl shadow-xs space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold uppercase tracking-wider">Quiz Pass Rate</span>
             <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
-              <Award className="w-4 h-4" />
+              <Medal className="w-4 h-4" />
             </div>
           </div>
           <p className="text-3xl font-extrabold text-foreground">{quizMetrics.passRatePercent}%</p>
@@ -78,7 +54,7 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold uppercase tracking-wider">Avg Quiz Score</span>
             <div className="p-2 bg-primary/10 text-primary rounded-xl">
-              <BarChart3 className="w-4 h-4" />
+              <ChartBar className="w-4 h-4" />
             </div>
           </div>
           <p className="text-3xl font-extrabold text-foreground">{quizMetrics.averageScorePercent}%</p>
@@ -89,7 +65,7 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold uppercase tracking-wider">Telemetry Events</span>
             <div className="p-2 bg-primary/10 text-primary rounded-xl">
-              <Activity className="w-4 h-4" />
+              <Pulse className="w-4 h-4" />
             </div>
           </div>
           <p className="text-3xl font-extrabold text-foreground">{totalEvents}</p>
@@ -102,7 +78,7 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-bold text-foreground text-base flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-primary" />
+              <CalendarBlank className="w-4 h-4 text-primary" />
               Daily Course Generation Volume
             </h3>
             <p className="text-xs text-muted-foreground">Volume of AI syllabi generated per day (past 14 days)</p>
@@ -111,7 +87,7 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
 
         {dailyTrends.length === 0 ? (
           <div className="h-64 flex flex-col items-center justify-center border border-dashed rounded-xl bg-muted/20 space-y-2 text-center p-6">
-            <Activity className="w-8 h-8 text-muted-foreground" />
+            <Pulse className="w-8 h-8 text-muted-foreground" />
             <h4 className="font-medium text-foreground text-sm">No Daily Activity Data</h4>
             <p className="text-xs text-muted-foreground max-w-sm">
               As users generate courses and upload PDFs, daily activity timelines will render automatically.
@@ -121,12 +97,6 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
           <div className="h-72 w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dailyTrends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorCourses" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary, #fe5933)" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="var(--primary, #fe5933)" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border, #e4e4e7)" opacity={0.6} />
                 <XAxis
                   dataKey="date"
@@ -156,8 +126,8 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
                   dataKey="coursesGenerated"
                   stroke="var(--primary, #fe5933)"
                   strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#colorCourses)"
+                  fillOpacity={0.12}
+                  fill="var(--primary, #fe5933)"
                   name="Courses Generated"
                 />
               </AreaChart>
@@ -170,7 +140,7 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
       <div className="p-6 bg-card border rounded-2xl shadow-xs space-y-4">
         <div>
           <h3 className="font-bold text-foreground text-base flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" />
+            <ChartBar className="w-4 h-4 text-primary" />
             System Telemetry Distribution
           </h3>
           <p className="text-xs text-muted-foreground">Breakdown of Pino-logged structured telemetry events</p>
@@ -178,7 +148,7 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
 
         {eventDistribution.length === 0 ? (
           <div className="h-48 flex flex-col items-center justify-center border border-dashed rounded-xl bg-muted/20 space-y-2 text-center p-6">
-            <BarChart3 className="w-8 h-8 text-muted-foreground" />
+            <ChartBar className="w-8 h-8 text-muted-foreground" />
             <h4 className="font-medium text-foreground text-sm">No Event Logs Yet</h4>
             <p className="text-xs text-muted-foreground max-w-sm">
               Perform actions like reviewing flashcards or taking quizzes to record live telemetry events.
@@ -212,11 +182,7 @@ export default function AdminStatsClient({ data }: AdminStatsClientProps) {
                     fontWeight: "500",
                   }}
                 />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]} name="Event Count">
-                  {eventDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
-                  ))}
-                </Bar>
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} name="Event Count" fill="var(--primary, #fe5933)" />
               </BarChart>
             </ResponsiveContainer>
           </div>

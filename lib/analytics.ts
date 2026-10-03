@@ -16,7 +16,7 @@ export type EventType =
 export async function trackEvent(
   userId: string,
   eventType: EventType | string,
-  metadata: Record<string, any> = {}
+  metadata: Record<string, unknown> = {}
 ): Promise<void> {
   const payload = {
     userId,

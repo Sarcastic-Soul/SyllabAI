@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PlatformStats, AdminCourseItem, PopularTopic } from "@/lib/queries/admin";
-import { Users, BookOpen, Layers, Award, Search, Eye, Lock, Globe, Sparkles } from "lucide-react";
+import { Users, BookOpen, Stack, Medal, MagnifyingGlass, Eye, Lock, Globe, Sparkle } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -68,7 +68,7 @@ export default function AdminDashboardClient({
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold uppercase tracking-wider">Modules Created</span>
             <div className="p-2 bg-primary/10 text-primary rounded-xl">
-              <Layers className="w-4 h-4" />
+              <Stack className="w-4 h-4" />
             </div>
           </div>
           <p className="text-3xl font-extrabold text-foreground">{stats.totalChapters}</p>
@@ -79,7 +79,7 @@ export default function AdminDashboardClient({
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold uppercase tracking-wider">Quiz Mastery</span>
             <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
-              <Award className="w-4 h-4" />
+              <Medal className="w-4 h-4" />
             </div>
           </div>
           <p className="text-3xl font-extrabold text-foreground">{stats.averageQuizScore}%</p>
@@ -91,7 +91,7 @@ export default function AdminDashboardClient({
       {popularTopics.length > 0 && (
         <div className="p-6 bg-card border rounded-2xl shadow-xs space-y-3">
           <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
+            <Sparkle className="w-4 h-4 text-primary" />
             Popular Course Topics
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -123,7 +123,7 @@ export default function AdminDashboardClient({
           <div className="flex items-center gap-3 w-full sm:w-auto">
             {/* Search Bar */}
             <div className="relative flex-1 sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <MagnifyingGlass className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search topic or author..."
                 value={searchTerm}
@@ -135,7 +135,7 @@ export default function AdminDashboardClient({
             {/* Filter */}
             <select
               value={filterPublic}
-              onChange={(e) => setFilterPublic(e.target.value as any)}
+              onChange={(e) => setFilterPublic(e.target.value as "all" | "public" | "private")}
               className="text-xs border rounded-lg px-3 py-2 bg-background text-foreground border-border focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">All Visibility</option>

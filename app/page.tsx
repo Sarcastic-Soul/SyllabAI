@@ -1,107 +1,79 @@
-"use client";
-
-import { useState } from "react";
 import Image from "next/image";
 import { SiGithub } from "@icons-pack/react-simple-icons";
-import AnimatedBackground from "@/components/landing/AnimatedBackground";
-import GradientMeshBackground from "@/components/landing/GradientMeshBackground";
-import NoiseOverlay from "@/components/landing/NoiseOverlay";
-import LandingHeader from "@/components/landing/LandingHeader";
-import HeroSection from "@/components/landing/HeroSection";
-import StatsSection from "@/components/landing/StatsSection";
-import TrustBadges from "@/components/landing/TrustBadges";
-import FeaturesSection from "@/components/landing/FeaturesSection";
-import HowItWorksSection from "@/components/landing/HowItWorksSection";
-import UseCasesSection from "@/components/landing/UseCasesSection";
+import SiteHeader from "@/components/landing/SiteHeader";
+import Hero from "@/components/landing/Hero";
+import InputsSection from "@/components/landing/InputsSection";
+import ChapterSection from "@/components/landing/ChapterSection";
+import ReviewSection from "@/components/landing/ReviewSection";
+import StudyBuddySection from "@/components/landing/StudyBuddySection";
+import StackSection from "@/components/landing/StackSection";
 import PricingSection from "@/components/landing/PricingSection";
-import FAQSection from "@/components/landing/FAQSection";
-import BottomCtaSection from "@/components/landing/BottomCtaSection";
+import FaqSection from "@/components/landing/FaqSection";
+import { StartCta } from "@/components/landing/AuthButtons";
+import {
+  GITHUB_URL,
+  container,
+  focusRing,
+} from "@/components/landing/styles";
 
 export default function LandingPage() {
-  const [loadingSignIn, setLoadingSignIn] = useState(false);
-  const [loadingSignUp, setLoadingSignUp] = useState(false);
-  const [loadingDashboard, setLoadingDashboard] = useState(false);
-
   return (
-    <div className="min-h-screen flex flex-col items-center overflow-x-hidden relative bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      {/* Topmost Subtle Grain/Noise Texture Overlay */}
-      <NoiseOverlay />
+    <div className="min-h-dvh bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
+      <a
+        href="#main"
+        className={`sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-background ${focusRing}`}
+      >
+        Skip to content
+      </a>
 
-      {/* Animated Hero Gradient Mesh Blobs */}
-      <GradientMeshBackground />
+      <SiteHeader />
 
-      {/* Ambient tsParticles & Grid Pattern */}
-      <AnimatedBackground />
-
-      {/* Sticky Glassmorphic Header */}
-      <LandingHeader
-        loadingSignIn={loadingSignIn}
-        loadingSignUp={loadingSignUp}
-        loadingDashboard={loadingDashboard}
-        setLoadingSignIn={setLoadingSignIn}
-        setLoadingSignUp={setLoadingSignUp}
-        setLoadingDashboard={setLoadingDashboard}
-      />
-
-      {/* Main Content Sections */}
-      <main className="w-full flex flex-col items-center px-0 pt-0 max-w-none bg-transparent">
-        {/* Hero Section */}
-        <HeroSection
-          loadingSignIn={loadingSignIn}
-          loadingSignUp={loadingSignUp}
-          loadingDashboard={loadingDashboard}
-          setLoadingSignIn={setLoadingSignIn}
-          setLoadingSignUp={setLoadingSignUp}
-          setLoadingDashboard={setLoadingDashboard}
-        />
-
-        {/* Social Proof / Stats Bar */}
-        <StatsSection />
-
-        {/* Tech Credibility Strip */}
-        <TrustBadges />
-
-        {/* Features Section */}
-        <FeaturesSection />
-
-        {/* How It Works Section */}
-        <HowItWorksSection />
-
-        {/* Personas & Use Cases Section */}
-        <UseCasesSection />
-
-        {/* Pricing Section */}
+      <main id="main" className="overflow-x-clip">
+        <Hero />
+        <InputsSection />
+        <ChapterSection />
+        <ReviewSection />
+        <StudyBuddySection />
+        <StackSection />
         <PricingSection />
+        <FaqSection />
 
-        {/* FAQ Accordion Section */}
-        <FAQSection />
-
-        {/* Bottom CTA Section */}
-        <BottomCtaSection />
+        <section className="border-t border-foreground/25">
+          <div className={`${container} py-24 lg:py-32`}>
+            <h2 className="max-w-3xl text-balance text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
+              Bring the notes for your next exam and see the course it makes.
+            </h2>
+            <div className="mt-9">
+              <StartCta />
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full py-10 border-t border-border/60 text-center text-sm text-muted-foreground flex flex-col items-center justify-center space-y-4 bg-card/30 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <Image
-            src="/logo.svg"
-            alt="SyllabAI Logo"
-            width={60}
-            height={30}
-            className="h-7 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
-          />
-          <span className="text-border">|</span>
+      <footer className="border-t border-border">
+        <div
+          className={`${container} flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-6 text-sm text-muted-foreground`}
+        >
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo.svg"
+              alt=""
+              width={28}
+              height={28}
+              className="size-7"
+            />
+            <span>SyllabAI, a student portfolio project</span>
+          </div>
           <a
-            href="https://github.com/Sarcastic-Soul/SyllabAI"
+            href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 hover:text-foreground transition-colors font-medium text-xs"
+            className={`flex min-h-11 items-center gap-2 rounded-sm transition-colors duration-150 hover:text-foreground ${focusRing}`}
           >
-            <SiGithub className="w-3.5 h-3.5" />
-            <span>GitHub Repository</span>
+            <SiGithub className="size-4" aria-hidden="true" />
+            GitHub
           </a>
         </div>
-        <p>© {new Date().getFullYear()} SyllabAI. All rights reserved.</p>
       </footer>
     </div>
   );

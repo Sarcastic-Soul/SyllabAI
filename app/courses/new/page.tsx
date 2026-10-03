@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
-import { Lock, Sparkles } from "lucide-react";
+import { Lock } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/ui/button";
 
 const FREE_COURSE_LIMIT = 2; // Set your free tier limit here
@@ -33,45 +33,48 @@ const NewCoursePage = async () => {
     const hasReachedLimit = !isPro && coursesCount >= FREE_COURSE_LIMIT;
 
     return (
-        <div className="max-w-3xl mx-auto p-6 space-y-8 mt-10">
-            <div className="space-y-2 text-center">
-                <h1 className="text-4xl font-bold flex items-center justify-center gap-3">
-                    <Sparkles className="w-8 h-8 text-primary" />
-                    Design Your Learning Path
-                </h1>
-                <p className="text-lg text-muted-foreground">
-                    Tell us what you want to learn, your skill level, and how
-                    much time you have. Our AI will generate a highly structured
-                    curriculum just for you.
+        <main className="mx-auto w-full max-w-2xl px-4 pt-8 pb-16 sm:px-6 sm:pt-12">
+            <header className="space-y-2">
+                <h1 className="text-3xl font-bold sm:text-4xl">New course</h1>
+                <p className="max-w-[55ch] leading-relaxed text-muted-foreground">
+                    Give a topic or upload your notes. You get a chapter list
+                    first, then you generate each lesson, quiz and flashcard set
+                    when you reach it.
                 </p>
-            </div>
+                {!isPro && !hasReachedLimit && (
+                    <p className="font-mono text-xs text-muted-foreground">
+                        {coursesCount}/{FREE_COURSE_LIMIT} free courses used
+                    </p>
+                )}
+            </header>
 
-            <div className="p-8 border rounded-2xl bg-card shadow-sm mt-8">
+            <div className="mt-8 rounded-xl border border-border bg-card p-5 sm:p-8">
                 {hasReachedLimit ? (
-                    <div className="flex flex-col items-center justify-center space-y-4 py-8 text-center">
-                        <div className="p-4 bg-muted rounded-full">
-                            <Lock className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                        <h2 className="text-2xl font-semibold">
-                            Limit Reached
+                    <div className="py-4">
+                        <Lock className="size-7 text-muted-foreground" aria-hidden />
+                        <h2 className="mt-4 text-xl font-semibold">
+                            You have used your free courses
                         </h2>
-                        <p className="text-muted-foreground max-w-md">
+                        <p className="mt-2 max-w-[50ch] leading-relaxed text-muted-foreground">
                             You have generated {coursesCount} out of{" "}
-                            {FREE_COURSE_LIMIT} free courses. Upgrade to our Pro
-                            plan to generate unlimited courses and unlock more
-                            features.
+                            {FREE_COURSE_LIMIT} free courses. Pro has no course
+                            limit. Your existing courses stay available either
+                            way.
                         </p>
-                        <Link href="/subscription">
-                            <Button size="lg" className="mt-4">
-                                Upgrade to Pro
+                        <div className="mt-6 flex flex-wrap gap-3">
+                            <Button asChild size="lg">
+                                <Link href="/subscription">See Pro plan</Link>
                             </Button>
-                        </Link>
+                            <Button asChild variant="outline" size="lg">
+                                <Link href="/dashboard">Back to courses</Link>
+                            </Button>
+                        </div>
                     </div>
                 ) : (
                     <CourseForm />
                 )}
             </div>
-        </div>
+        </main>
     );
 };
 

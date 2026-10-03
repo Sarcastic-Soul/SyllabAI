@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider, Show } from "@clerk/nextjs";
 import "./globals.css";
 import Navbar from "@/components/shared/Navbar";
@@ -12,9 +12,22 @@ const bricolage = Bricolage_Grotesque({
   adjustFontFallback: false,
 });
 
+const geist = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "SyllabAI",
-  description: "The Ultimate AI-Powered LMS",
+  description:
+    "Turn a topic or a PDF into a structured course with lessons, quizzes, flashcards and a study buddy.",
   icons: {
     icon: "/logo.svg",
     shortcut: "/logo.svg",
@@ -29,8 +42,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
-      <body className={`${bricolage.variable} antialiased`}>
-        <ClerkProvider appearance={{ variables: { colorPrimary: "#fe5933" } }}>
+      <body className={`${bricolage.variable} ${geist.variable} ${geistMono.variable} antialiased`}>
+        <ClerkProvider appearance={{ variables: { colorPrimary: "#e8471f" } }}>
           <Show when="signed-in">
             {/* 2. Wrapped Navbar */}
             <ConditionalNavbar>

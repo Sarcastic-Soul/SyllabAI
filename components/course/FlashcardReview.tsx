@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Check, Zap, Brain, ChevronLeft, ChevronRight } from "lucide-react";
-import { reviewFlashcard, getFlashcardsDueForReview } from "@/lib/actions/flashcard.actions";
+import { ArrowCounterClockwise, CheckCircle, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { motion, useReducedMotion } from "motion/react";
+import { reviewFlashcard } from "@/lib/actions/flashcard.actions";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
@@ -21,13 +22,14 @@ interface FlashcardReviewProps {
     chapterId: string;
 }
 
-export default function FlashcardReview({ flashcards: initialCards, chapterId }: FlashcardReviewProps) {
-    const [cards, setCards] = useState(initialCards);
+export default function FlashcardReview({ flashcards: initialCards }: FlashcardReviewProps) {
+    const [cards] = useState(initialCards);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [sessionComplete, setSessionComplete] = useState(false);
     const [reviewedCount, setReviewedCount] = useState(0);
+    const reduceMotion = useReducedMotion();
 
     // Separate due cards from future cards
     const now = new Date();
@@ -73,25 +75,29 @@ export default function FlashcardReview({ flashcards: initialCards, chapterId }:
 
     if (cards.length === 0) {
         return (
-            <div className="text-center py-8 text-muted-foreground bg-secondary/10 rounded-xl border border-dashed border-secondary mt-6">
-                <Brain className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                <p>No flashcards yet. Generate flashcards from the lesson first!</p>
+            <div className="mt-6 rounded-xl border border-dashed border-foreground/25 px-6 py-8">
+                <p className="font-medium">No flashcards for this chapter yet.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Generate a set from this lesson to start reviewing.
+                </p>
             </div>
         );
     }
 
     if (sessionComplete) {
         return (
-            <div className="p-8 border rounded-2xl bg-green-500/10 border-green-500/20 text-center space-y-3 mt-6">
-                <Check className="w-10 h-10 mx-auto text-green-500" />
-                <h3 className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    Review Complete!
-                </h3>
-                <p className="text-muted-foreground">
-                    You reviewed {reviewedCount} card{reviewedCount !== 1 ? "s" : ""}. Come back later for your next review session.
+            <div className="mt-6 rounded-xl border border-border bg-card p-6 sm:p-8">
+                <div className="flex items-center gap-2.5">
+                    <CheckCircle weight="fill" className="size-6 shrink-0 text-success" aria-hidden />
+                    <h3 className="text-xl font-semibold">Review done</h3>
+                </div>
+                <p className="mt-2 max-w-[55ch] text-muted-foreground">
+                    You reviewed {reviewedCount} card{reviewedCount !== 1 ? "s" : ""}. Cards
+                    you found hard come back sooner, easy ones later.
                 </p>
                 <Button
                     variant="outline"
+                    className="mt-5"
                     onClick={() => {
                         setCurrentIndex(0);
                         setIsFlipped(false);
@@ -99,107 +105,122 @@ export default function FlashcardReview({ flashcards: initialCards, chapterId }:
                         setReviewedCount(0);
                     }}
                 >
-                    <RotateCcw className="w-4 h-4 mr-2" /> Browse All Cards
+                    <ArrowCounterClockwise /> Go through the cards again
                 </Button>
             </div>
         );
     }
 
+    const ratings: { quality: 0 | 1 | 2 | 3; label: string; dot: string }[] = [
+        { quality: 0, label: "Again", dot: "bg-destructive" },
+        { quality: 1, label: "Hard", dot: "bg-warning" },
+        { quality: 2, label: "Good", dot: "bg-foreground/50" },
+        { quality: 3, label: "Easy", dot: "bg-success" },
+    ];
+
+    const faceClass =
+        "[grid-area:1/1] flex min-h-52 flex-col rounded-xl border bg-card p-5 backface-hidden sm:p-7";
+
     return (
         <div className="mt-6 space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span className="flex items-center gap-2">
-                    <Brain className="w-4 h-4" />
-                    Card {currentIndex + 1} of {cards.length}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground">
+                <span>
+                    Card {currentIndex + 1}/{cards.length}
                     {totalDue > 0 && (
-                        <span className="text-primary font-medium">
-                            ({totalDue} due for review)
-                        </span>
+                        <span className="text-foreground"> · {totalDue} due</span>
                     )}
                 </span>
-                <span>{reviewedCount} reviewed this session</span>
+                <span>{reviewedCount} reviewed</span>
             </div>
 
-            {/* Card */}
-            <div
+            {/* Keyed by card so a new card always starts on its question side */}
+            <button
+                key={currentCard.id}
+                type="button"
                 onClick={handleFlip}
-                className={cn(
-                    "relative min-h-[200px] p-8 border-2 rounded-2xl cursor-pointer transition-all duration-300 flex items-center justify-center text-center",
-                    isFlipped
-                        ? "bg-primary/5 border-primary/30"
-                        : "bg-card border-border hover:border-primary/30",
-                )}
+                aria-label={isFlipped ? "Show the question" : "Show the answer"}
+                className="group block w-full cursor-pointer rounded-xl text-left perspective-[1200px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
-                <div>
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 block">
-                        {isFlipped ? "Answer" : "Question"}
+                <motion.span
+                    className="grid transform-3d"
+                    initial={false}
+                    animate={{ rotateY: isFlipped ? 180 : 0 }}
+                    transition={
+                        reduceMotion
+                            ? { duration: 0 }
+                            : { type: "spring", bounce: 0, duration: 0.4 }
+                    }
+                >
+                    <span
+                        aria-hidden={isFlipped}
+                        className={cn(
+                            faceClass,
+                            "border-foreground/20 transition-colors duration-150 group-hover:border-foreground/40",
+                        )}
+                    >
+                        <span className="font-mono text-xs text-muted-foreground">
+                            Question
+                        </span>
+                        <span className="my-auto block py-4 text-lg leading-snug font-medium text-pretty sm:text-xl">
+                            {currentCard.front}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                            Tap to see the answer
+                        </span>
                     </span>
-                    <p className="text-lg md:text-xl font-medium">
-                        {isFlipped ? currentCard.back : currentCard.front}
-                    </p>
-                    {!isFlipped && (
-                        <p className="text-xs text-muted-foreground mt-4">
-                            Click to reveal answer
-                        </p>
-                    )}
-                </div>
-            </div>
+                    <span
+                        aria-hidden={!isFlipped}
+                        className={cn(faceClass, "rotate-y-180 border-foreground/50")}
+                    >
+                        <span className="font-mono text-xs text-primary">
+                            Answer
+                        </span>
+                        <span className="my-auto block py-4 text-lg leading-snug font-medium text-pretty sm:text-xl">
+                            {currentCard.back}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                            How well did you know it?
+                        </span>
+                    </span>
+                </motion.span>
+            </button>
 
-            {/* Review Buttons (shown after flip) */}
             {isFlipped ? (
                 <div className="grid grid-cols-4 gap-2">
-                    <Button
-                        variant="outline"
-                        className="border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-500"
-                        onClick={() => handleReview(0)}
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting ? <Spinner className="w-4 h-4" /> : "Again"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-orange-500/30 text-orange-500 hover:bg-orange-500/10 hover:text-orange-500"
-                        onClick={() => handleReview(1)}
-                        disabled={isSubmitting}
-                    >
-                        Hard
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-blue-500/30 text-blue-500 hover:bg-blue-500/10 hover:text-blue-500"
-                        onClick={() => handleReview(2)}
-                        disabled={isSubmitting}
-                    >
-                        Good
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-green-500/30 text-green-500 hover:bg-green-500/10 hover:text-green-500"
-                        onClick={() => handleReview(3)}
-                        disabled={isSubmitting}
-                    >
-                        <Zap className="w-4 h-4 mr-1" /> Easy
-                    </Button>
+                    {ratings.map((r) => (
+                        <Button
+                            key={r.quality}
+                            variant="outline"
+                            className="h-11 gap-1.5 px-2"
+                            onClick={() => handleReview(r.quality)}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting && r.quality === 0 ? (
+                                <Spinner />
+                            ) : (
+                                <span aria-hidden className={cn("size-2 shrink-0 rounded-full", r.dot)} />
+                            )}
+                            {r.label}
+                        </Button>
+                    ))}
                 </div>
             ) : (
-                /* Browse navigation (before flip) */
                 <div className="flex justify-between">
                     <Button
                         variant="ghost"
-                        size="sm"
+                        className="h-11"
                         onClick={() => handleBrowse("prev")}
                         disabled={currentIndex === 0}
                     >
-                        <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                        <CaretLeft /> Previous
                     </Button>
                     <Button
                         variant="ghost"
-                        size="sm"
+                        className="h-11"
                         onClick={() => handleBrowse("next")}
                         disabled={currentIndex === cards.length - 1}
                     >
-                        Next <ChevronRight className="w-4 h-4 ml-1" />
+                        Next <CaretRight />
                     </Button>
                 </div>
             )}

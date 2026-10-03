@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { Loader2, Download } from "lucide-react";
+import React, { useEffect, useId, useState } from "react";
+import { SpinnerGap, DownloadSimple } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 // Mermaid is lazy-imported inside the effect to avoid shipping its ~3MB
@@ -11,7 +11,9 @@ export default function MermaidDiagram({ code, regenerateAction }: { code: strin
   const [svg, setSvg] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isRetrying, setIsRetrying] = useState(false);
-  const id = useRef(`mermaid-${Math.random().toString(36).slice(2, 11)}`);
+  // useId can contain characters that are not valid in a CSS selector, and
+  // mermaid looks the element up by selector, so keep only safe ones.
+  const id = `mermaid-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
   useEffect(() => {
     if (!code) return;
@@ -21,28 +23,58 @@ export default function MermaidDiagram({ code, regenerateAction }: { code: strin
         const mermaid = (await import("mermaid")).default;
         mermaid.initialize({
           startOnLoad: false,
-          theme: "default",
+          // "base" is the only mermaid theme that takes custom colors.
+          // Mermaid needs hex values here, so these mirror the tokens in globals.css.
+          theme: "base",
+          themeVariables: {
+            background: "#fdfbf8",
+            primaryColor: "#f3eee8",
+            primaryTextColor: "#2a2420",
+            primaryBorderColor: "#2a2420",
+            secondaryColor: "#fbe4da",
+            secondaryTextColor: "#2a2420",
+            secondaryBorderColor: "#e8471f",
+            tertiaryColor: "#f8f5f0",
+            tertiaryTextColor: "#2a2420",
+            tertiaryBorderColor: "#cfc8bf",
+            lineColor: "#625a52",
+            textColor: "#2a2420",
+            mainBkg: "#f3eee8",
+            nodeBorder: "#2a2420",
+            clusterBkg: "#f8f5f0",
+            clusterBorder: "#cfc8bf",
+            edgeLabelBackground: "#fdfbf8",
+            noteBkgColor: "#fbe4da",
+            noteTextColor: "#2a2420",
+            noteBorderColor: "#e8471f",
+            fontSize: "15px",
+          },
           securityLevel: "loose",
-          fontFamily: "var(--font-bricolage)",
+          fontFamily: "var(--font-geist), ui-sans-serif, system-ui, sans-serif",
         });
-        const { svg: renderedSvg } = await mermaid.render(id.current, code);
+        const { svg: renderedSvg } = await mermaid.render(id, code);
         setSvg(renderedSvg);
         setError("");
-      } catch (err: any) {
+      } catch (err) {
         console.error("Mermaid rendering failed:", err);
-        setError("Failed to render diagram.");
+        setError("This diagram could not be drawn.");
       }
     };
 
     renderDiagram();
-  }, [code]);
+  }, [code, id]);
 
   if (error) {
     return (
-      <div className="p-4 text-red-500 bg-red-500/10 rounded-xl border border-red-500/20 text-sm font-mono flex items-center justify-between">
+      <div
+        role="alert"
+        className="not-prose my-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm"
+      >
         <span>{error}</span>
         {regenerateAction && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={async () => {
                 setIsRetrying(true);
                 try {
@@ -52,10 +84,9 @@ export default function MermaidDiagram({ code, regenerateAction }: { code: strin
                 }
             }}
             disabled={isRetrying}
-            className="px-3 py-1 bg-white dark:bg-black rounded-lg border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
           >
             {isRetrying ? "Retrying..." : "Retry"}
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -63,8 +94,12 @@ export default function MermaidDiagram({ code, regenerateAction }: { code: strin
 
   if (!svg) {
     return (
-      <div className="flex justify-center items-center py-12 border rounded-xl bg-muted/20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div
+        role="status"
+        aria-label="Drawing diagram"
+        className="not-prose my-6 flex items-center justify-center rounded-lg border border-border bg-card py-14"
+      >
+        <SpinnerGap className="size-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -86,7 +121,7 @@ export default function MermaidDiagram({ code, regenerateAction }: { code: strin
       canvas.height = img.height * scale;
       
       if (ctx) {
-        ctx.fillStyle = "white"; // White background instead of transparent
+        ctx.fillStyle = "#fdfbf8"; // Paper background instead of transparent
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
@@ -102,21 +137,18 @@ export default function MermaidDiagram({ code, regenerateAction }: { code: strin
   };
 
   return (
-    <div className="relative my-6 w-full border rounded-2xl bg-white shadow-sm p-6 pt-14 overflow-hidden">
-      <div className="absolute top-3 right-3 z-10 print:hidden">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={downloadPNG}
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Download PNG
-        </Button>
-      </div>
+    <figure className="not-prose my-6 w-full overflow-hidden rounded-lg border border-border bg-card">
       <div
-        className="w-full flex justify-center overflow-x-auto"
+        className="flex w-full justify-center overflow-x-auto p-4 sm:p-6"
         dangerouslySetInnerHTML={{ __html: svg }}
       />
-    </div>
+      <figcaption className="flex items-center justify-between gap-3 border-t border-border py-1.5 pr-1.5 pl-4 print:hidden">
+        <span className="font-mono text-xs text-muted-foreground">Diagram</span>
+        <Button variant="ghost" size="sm" onClick={downloadPNG}>
+          <DownloadSimple />
+          Download PNG
+        </Button>
+      </figcaption>
+    </figure>
   );
 }

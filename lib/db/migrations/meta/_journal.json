@@ -22,6 +22,20 @@
       "when": 1784713841465,
       "tag": "0002_glossy_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791033474377,
+      "tag": "0003_remarkable_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791036952340,
+      "tag": "0004_silly_mephistopheles",
+      "breakpoints": true
     }
   ]
 }

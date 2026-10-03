@@ -1,12 +1,12 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getCachedValue, setCachedValue, incrementCachedCounter } from "@/lib/redis";
-import { logInfo, logWarn } from "@/lib/logger";
-import { withRetry } from "@/lib/utils/retry";
+import { GoogleGenAI } from "@google/genai";
+import { logWarn } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { courses, studyBuddyMessages } from "@/lib/db/schema";
-import { gte, and, eq } from "drizzle-orm";
+import { generationLogs } from "@/lib/db/schema";
+import { gte, and, eq, sql } from "drizzle-orm";
 
-export function getGenAI(): GoogleGenerativeAI {
+export type GeminiModelName = "gemini-3.8-flash" | "gemini-3.5-flash-lite";
+
+export function getGenAI(): GoogleGenAI {
   const apiKey =
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_GEMINI_API_KEY ||
@@ -17,21 +17,13 @@ export function getGenAI(): GoogleGenerativeAI {
       "MISSING_GEMINI_API_KEY: Environment variable GEMINI_API_KEY is missing or empty in Vercel settings. Please configure GEMINI_API_KEY in your Vercel Project Environment Variables."
     );
   }
-  return new GoogleGenerativeAI(apiKey.trim());
+  return new GoogleGenAI({ apiKey: apiKey.trim() });
 }
 
-export const QUOTA_LIMITS = {
-  "gemini-3.6-flash": 20,
+export const QUOTA_LIMITS: Record<GeminiModelName, number> = {
+  "gemini-3.8-flash": 20,
   "gemini-3.5-flash-lite": 500,
 };
-
-// In-memory fallback counters if Redis is offline
-const inMemoryQuotaMap = new Map<string, number>();
-
-function getTodayKey(model: string): string {
-  const today = new Date().toISOString().split("T")[0];
-  return `gemini:quota:${model}:${today}`;
-}
 
 function getStartOfTodayUTC(): Date {
   const now = new Date();
@@ -40,68 +32,35 @@ function getStartOfTodayUTC(): Date {
 }
 
 /**
- * Gets current daily usage count for a given model.
+ * Number of API requests made to a model today (UTC), counted from generation_logs.
+ * A repaired row stands for two requests (the first call and the repair call).
+ * Rows that never reached the API (quota_exhausted) are left out.
  */
-export async function getModelUsageToday(model: "gemini-3.6-flash" | "gemini-3.5-flash-lite"): Promise<number> {
-  const key = getTodayKey(model);
-  let countFromCache = 0;
-
-  const raw = await getCachedValue(key);
-  if (raw !== null) {
-    const val = parseInt(raw, 10);
-    if (!isNaN(val) && val > 0) countFromCache = val;
-  }
-
-  const memoryVal = inMemoryQuotaMap.get(key) || 0;
-  countFromCache = Math.max(countFromCache, memoryVal);
-
-  // Ground-truth database fallback count
-  let dbCount = 0;
+export async function getModelUsageToday(model: GeminiModelName): Promise<number> {
   try {
-    const todayStart = getStartOfTodayUTC();
-    if (model === "gemini-3.6-flash") {
-      const todayCourses = await db.query.courses.findMany({
-        where: gte(courses.createdAt, todayStart),
-      });
-      dbCount = todayCourses.length;
-    } else if (model === "gemini-3.5-flash-lite") {
-      const todayBuddyMsgs = await db.query.studyBuddyMessages.findMany({
-        where: and(
-          eq(studyBuddyMessages.role, "ai"),
-          gte(studyBuddyMessages.createdAt, todayStart)
-        ),
-      });
-      dbCount = todayBuddyMsgs.length;
-    }
+    const [row] = await db
+      .select({
+        value: sql<number>`count(*) + count(*) FILTER (WHERE ${generationLogs.repaired})`,
+      })
+      .from(generationLogs)
+      .where(
+        and(
+          eq(generationLogs.model, model),
+          gte(generationLogs.createdAt, getStartOfTodayUTC()),
+          sql`${generationLogs.errorType} IS DISTINCT FROM 'quota_exhausted'`
+        )
+      );
+    return Number(row?.value ?? 0);
   } catch (e) {
-    console.warn(`DB fallback query for ${model} quota status failed:`, e);
+    console.warn(`Quota count query for ${model} failed:`, e);
+    return 0;
   }
-
-  const finalCount = Math.max(countFromCache, dbCount);
-  if (finalCount > countFromCache && finalCount > 0) {
-    await setCachedValue(key, String(finalCount), 86400);
-    inMemoryQuotaMap.set(key, finalCount);
-  }
-
-  return finalCount;
-}
-
-
-/**
- * Increments daily usage counter for a given model.
- */
-export async function incrementModelUsage(model: "gemini-3.6-flash" | "gemini-3.5-flash-lite"): Promise<number> {
-  const key = getTodayKey(model);
-  const newCount = await incrementCachedCounter(key, 86400);
-  inMemoryQuotaMap.set(key, newCount);
-  logInfo(`[QUOTA_TRACKER] Incremented usage for ${model}: ${newCount}/${QUOTA_LIMITS[model]} today`);
-  return newCount;
 }
 
 export interface QuotaStatusSummary {
-  flash36: { used: number; limit: number; percent: number };
+  flash38: { used: number; limit: number; percent: number };
   flash35Lite: { used: number; limit: number; percent: number };
-  activeModel: "gemini-3.6-flash" | "gemini-3.5-flash-lite";
+  activeModel: GeminiModelName;
   healthStatus: "Optimal" | "Smart Fallback Active" | "Quota Exhausted";
 }
 
@@ -109,27 +68,27 @@ export interface QuotaStatusSummary {
  * Gets full daily quota status summary for Admin Dashboard.
  */
 export async function getDailyQuotaStatus(): Promise<QuotaStatusSummary> {
-  const used36 = await getModelUsageToday("gemini-3.6-flash");
+  const used38 = await getModelUsageToday("gemini-3.8-flash");
   const used35Lite = await getModelUsageToday("gemini-3.5-flash-lite");
 
-  const limit36 = QUOTA_LIMITS["gemini-3.6-flash"];
+  const limit38 = QUOTA_LIMITS["gemini-3.8-flash"];
   const limit35Lite = QUOTA_LIMITS["gemini-3.5-flash-lite"];
 
-  const percent36 = Math.min(100, Math.round((used36 / limit36) * 100));
+  const percent38 = Math.min(100, Math.round((used38 / limit38) * 100));
   const percent35Lite = Math.min(100, Math.round((used35Lite / limit35Lite) * 100));
 
-  let activeModel: "gemini-3.6-flash" | "gemini-3.5-flash-lite" = "gemini-3.6-flash";
-  let healthStatus: "Optimal" | "Smart Fallback Active" | "Quota Exhausted" = "Optimal";
+  let activeModel: GeminiModelName = "gemini-3.8-flash";
+  let healthStatus: QuotaStatusSummary["healthStatus"] = "Optimal";
 
-  if (used36 >= 18 && used35Lite < 480) {
+  if (used38 >= 18 && used35Lite < 480) {
     activeModel = "gemini-3.5-flash-lite";
     healthStatus = "Smart Fallback Active";
-  } else if (used36 >= 20 && used35Lite >= 500) {
+  } else if (used38 >= 20 && used35Lite >= 500) {
     healthStatus = "Quota Exhausted";
   }
 
   return {
-    flash36: { used: used36, limit: limit36, percent: percent36 },
+    flash38: { used: used38, limit: limit38, percent: percent38 },
     flash35Lite: { used: used35Lite, limit: limit35Lite, percent: percent35Lite },
     activeModel,
     healthStatus,
@@ -137,75 +96,37 @@ export async function getDailyQuotaStatus(): Promise<QuotaStatusSummary> {
 }
 
 export interface SmartModelSelection {
-  model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>;
-  modelName: "gemini-3.6-flash" | "gemini-3.5-flash-lite";
+  modelName: GeminiModelName;
   isFallback: boolean;
 }
 
 /**
- * Returns a Gemini GenerativeModel instance with automatic quota fallback.
- * If preferredModel (e.g. gemini-3.6-flash) is near limit (>=18/20 calls),
- * automatically degrades to gemini-3.5-flash-lite (500/day limit) without failing.
+ * Picks the Gemini model for one generation call. Usage is counted from the
+ * generation_logs row that lib/ai/generate.ts writes for the call.
+ * If preferredModel (gemini-3.8-flash) is near its limit (>=18/20 calls),
+ * it falls back to gemini-3.5-flash-lite (500/day limit) instead of failing.
+ * Callers should not use this directly; go through lib/ai/generate.ts.
  */
-export async function getSmartGenerativeModel(
-  preferredModel: "gemini-3.6-flash" | "gemini-3.5-flash-lite" = "gemini-3.6-flash"
+export async function selectSmartModel(
+  preferredModel: GeminiModelName = "gemini-3.8-flash"
 ): Promise<SmartModelSelection> {
-  const genAI = getGenAI();
-  const usage36 = await getModelUsageToday("gemini-3.6-flash");
+  const usage38 = await getModelUsageToday("gemini-3.8-flash");
 
-  // Check if preferredModel (3.6 Flash) is near its 20/day limit
-  if (preferredModel === "gemini-3.6-flash" && usage36 >= 18) {
+  if (preferredModel === "gemini-3.8-flash" && usage38 >= 18) {
     const usage35Lite = await getModelUsageToday("gemini-3.5-flash-lite");
 
     if (usage35Lite < 490) {
       logWarn(
-        `[QUOTA_FALLBACK] Gemini 3.6 Flash daily quota near limit (${usage36}/20). Routing request to Gemini 3.5 Flash Lite fallback!`
+        `[QUOTA_FALLBACK] Gemini 3.8 Flash daily quota near limit (${usage38}/20). Routing request to Gemini 3.5 Flash Lite fallback!`
       );
 
-      await incrementModelUsage("gemini-3.5-flash-lite");
-      return {
-        model: genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" }),
-        modelName: "gemini-3.5-flash-lite",
-        isFallback: true,
-      };
-    } else {
-      throw new Error(
-        "DAILY_AI_QUOTA_EXHAUSTED: Daily AI generation limit reached (20/20 on 3.6 Flash and 500/500 on 3.5 Lite). Please try a cached topic or return tomorrow!"
-      );
+      return { modelName: "gemini-3.5-flash-lite", isFallback: true };
     }
+
+    throw new Error(
+      "DAILY_AI_QUOTA_EXHAUSTED: Daily AI generation limit reached (20/20 on 3.8 Flash and 500/500 on 3.5 Lite). Please come back tomorrow!"
+    );
   }
 
-  // Use preferred model
-  const selectedModel = preferredModel;
-  await incrementModelUsage(selectedModel);
-
-  return {
-    model: genAI.getGenerativeModel({ model: selectedModel }),
-    modelName: selectedModel,
-    isFallback: false,
-  };
-}
-
-/**
- * Generates text embedding vector with fallback models (text-embedding-004 -> embedding-001).
- */
-export async function getEmbeddingVector(text: string): Promise<number[] | null> {
-  if (!text || text.trim().length === 0) return null;
-
-  const genAI = getGenAI();
-
-  try {
-    const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-    const res = await withRetry(() => embedModel.embedContent(text));
-    return res.embedding.values;
-  } catch (err: any) {
-    try {
-      const fallbackModel = genAI.getGenerativeModel({ model: "embedding-001" });
-      const res = await withRetry(() => fallbackModel.embedContent(text));
-      return res.embedding.values;
-    } catch (fallbackErr: any) {
-      logWarn(`Embedding generation skipped: ${fallbackErr?.message || err?.message || "Model unavailable"}`);
-      return null;
-    }
-  }
+  return { modelName: preferredModel, isFallback: false };
 }

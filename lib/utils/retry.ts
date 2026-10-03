@@ -22,14 +22,14 @@ export async function withRetry<T>(
     while (attempt <= maxRetries) {
         try {
             return await fn();
-        } catch (error: any) {
+        } catch (error) {
             attempt++;
             if (attempt > maxRetries) {
                 console.error(`Execution failed after ${maxRetries} retries:`, error);
                 throw error;
             }
 
-            const errorMessage = String(error?.message || error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
             const isTransient =
                 errorMessage.includes("429") ||
                 errorMessage.includes("503") ||

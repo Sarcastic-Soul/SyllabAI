@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash } from "@phosphor-icons/react";
 import { Spinner } from "@/components/ui/spinner";
 import { deleteCourse } from "@/lib/actions/course.actions";
 
@@ -37,16 +37,12 @@ export default function DeleteCourseButton({ courseId }: { courseId: string }) {
     <Button
       variant="outline"
       size="sm"
-      className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+      className="border-destructive/40 text-destructive hover:border-destructive hover:bg-destructive/10"
       onClick={handleDelete}
       disabled={isPending}
     >
-      {isPending ? (
-        <Spinner className="w-4 h-4 mr-2" />
-      ) : (
-        <Trash2 className="w-4 h-4 mr-2" />
-      )}
-      {isPending ? "Deleting..." : "Delete Course"}
+      {isPending ? <Spinner /> : <Trash />}
+      {isPending ? "Deleting..." : "Delete course"}
     </Button>
   );
 }

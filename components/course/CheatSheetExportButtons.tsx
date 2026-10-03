@@ -1,8 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Download, FileText, FileDown } from "lucide-react";
-import { useState } from "react";
+import { FileMd, FilePdf } from "@phosphor-icons/react";
 
 interface Props {
   content: string;
@@ -10,8 +9,6 @@ interface Props {
 }
 
 export default function CheatSheetExportButtons({ content, courseTopic }: Props) {
-  const [isExportingPDF, setIsExportingPDF] = useState(false);
-
   const downloadMarkdown = () => {
     const blob = new Blob([content], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
@@ -53,12 +50,12 @@ export default function CheatSheetExportButtons({ content, courseTopic }: Props)
   return (
     <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={downloadMarkdown}>
-            <FileDown className="w-4 h-4 mr-2" />
+            <FileMd />
             Markdown
         </Button>
-        <Button variant="outline" size="sm" onClick={downloadPDF} disabled={isExportingPDF}>
-            <FileText className="w-4 h-4 mr-2" />
-            {isExportingPDF ? "Exporting..." : "PDF"}
+        <Button variant="outline" size="sm" onClick={downloadPDF}>
+            <FilePdf />
+            PDF
         </Button>
     </div>
   );

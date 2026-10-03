@@ -2,15 +2,13 @@
 
 import { db } from "@/lib/db";
 import { quizzes, questions, courses } from "@/lib/db/schema";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { generateQuizSchema, submitQuizScoreSchema } from "@/lib/validations";
-import { withRetry } from "@/lib/utils/retry";
-import { checkRateLimit } from "@/lib/ratelimit";
 import { calculateCourseMastery } from "@/lib/adaptive";
-import { getSmartGenerativeModel } from "@/lib/quota";
+import { generate } from "@/lib/ai/generate";
+import { quizSchema } from "@/lib/ai/schemas";
 import { trackEvent } from "@/lib/analytics";
 
 
@@ -23,10 +21,6 @@ export async function generateChapterQuiz(
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    const rateLimit = await checkRateLimit(userId);
-    if (!rateLimit.success) {
-      throw new Error("RATE_LIMIT_EXCEEDED: You have reached your hourly AI generation limit.");
-    }
 
     const validated = generateQuizSchema.parse({ chapterId, lessonText, courseId });
 
@@ -74,15 +68,13 @@ export async function generateChapterQuiz(
         `;
 
     // Model optimization: Use gemini-3.5-flash-lite for quizzes
-    const { model } = await getSmartGenerativeModel("gemini-3.5-flash-lite");
-    const result = await withRetry(() => model.generateContent(prompt));
-
-    const cleanedText = result.response
-      .text()
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-    const generatedQuestions = JSON.parse(cleanedText);
+    const { data: generatedQuestions } = await generate({
+      step: "quiz",
+      prompt,
+      schema: quizSchema,
+      preferredModel: "gemini-3.5-flash-lite",
+      userId,
+    });
 
     const [newQuiz] = await db
       .insert(quizzes)
@@ -92,7 +84,7 @@ export async function generateChapterQuiz(
       })
       .returning();
 
-    const questionsToInsert = generatedQuestions.map((q: any) => ({
+    const questionsToInsert = generatedQuestions.map((q) => ({
       quizId: newQuiz.id,
       questionText: q.questionText,
       options: q.options,
@@ -104,9 +96,9 @@ export async function generateChapterQuiz(
     revalidatePath(`/courses/${validated.courseId}/chapters/${validated.chapterId}`);
 
     return newQuiz.id;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error generating quiz:", error);
-    throw new Error(error?.message || "Failed to generate quiz");
+    throw new Error((error instanceof Error && error.message) || "Failed to generate quiz");
   }
 }
 

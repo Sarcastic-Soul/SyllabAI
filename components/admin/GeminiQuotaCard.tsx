@@ -2,30 +2,40 @@
 
 import { useEffect, useState } from "react";
 import { QuotaStatusSummary } from "@/lib/quota";
-import { Cpu, Zap, RefreshCw } from "lucide-react";
+import { Cpu, ArrowsClockwise } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+
+// Returns null when the request fails, so the card keeps what it had.
+async function requestQuota(): Promise<QuotaStatusSummary | null> {
+  try {
+    const res = await fetch("/api/admin/quota");
+    if (res.ok) return await res.json();
+  } catch {
+    // Ignore error for card fetch
+  }
+  return null;
+}
 
 export default function GeminiQuotaCard() {
   const [quota, setQuota] = useState<QuotaStatusSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchQuota = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/quota");
-      if (res.ok) {
-        const data = await res.json();
-        setQuota(data);
-      }
-    } catch {
-      // Ignore error for card fetch
-    } finally {
-      setLoading(false);
-    }
+  const applyQuota = (data: QuotaStatusSummary | null) => {
+    if (data) setQuota(data);
+    setLoading(false);
   };
 
+  const fetchQuota = async () => {
+    setLoading(true);
+    applyQuota(await requestQuota());
+  };
+
+  // Loading starts as true, so the first load only sets state when it finishes.
   useEffect(() => {
-    fetchQuota();
+    requestQuota().then((data) => {
+      if (data) setQuota(data);
+      setLoading(false);
+    });
   }, []);
 
   if (loading) {
@@ -78,27 +88,27 @@ export default function GeminiQuotaCard() {
             {quota.healthStatus}
           </span>
           <Button variant="outline" size="sm" onClick={fetchQuota} className="h-8 px-2">
-            <RefreshCw className="w-3.5 h-3.5" />
+            <ArrowsClockwise className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>
 
       {/* Usage Bars */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-        {/* Gemini 3.6 Flash Bar */}
+        {/* Gemini 3.8 Flash Bar */}
         <div className="p-4 bg-muted/40 border border-border rounded-xl space-y-2">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-foreground">Gemini 3.6 Flash (Primary)</span>
+            <span className="font-semibold text-foreground">Gemini 3.8 Flash (Primary)</span>
             <span className="font-mono font-bold text-primary">
-              {quota.flash36.used} / {quota.flash36.limit} RPD
+              {quota.flash38.used} / {quota.flash38.limit} RPD
             </span>
           </div>
           <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                quota.flash36.percent >= 90 ? "bg-amber-500" : "bg-primary"
+                quota.flash38.percent >= 90 ? "bg-amber-500" : "bg-primary"
               }`}
-              style={{ width: `${quota.flash36.percent}%` }}
+              style={{ width: `${quota.flash38.percent}%` }}
             />
           </div>
           <p className="text-[11px] text-muted-foreground">
@@ -126,13 +136,6 @@ export default function GeminiQuotaCard() {
         </div>
       </div>
 
-      {/* Quota Shielding Note */}
-      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center text-xs text-emerald-500">
-        <Zap className="w-4 h-4 mr-2 text-emerald-500 shrink-0 fill-emerald-500" />
-        <span>
-          <strong className="font-semibold">Redis Quota Shielding Active:</strong> Repeated topics and PDF requests pull from Upstash Redis cache consuming <strong>0 Gemini API calls</strong>.
-        </span>
-      </div>
     </div>
   );
 }

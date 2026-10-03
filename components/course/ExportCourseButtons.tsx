@@ -1,15 +1,22 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Download, FileText, FileImage, ChevronDown } from "lucide-react";
+import { DownloadSimple, FilePdf, FileMd, CaretDown } from "@phosphor-icons/react";
 import { useState, useRef, useEffect } from "react";
+import type { courses, chapters as chaptersTable } from "@/lib/db/schema";
+
+type ExportCourse = Pick<typeof courses.$inferSelect, "id" | "topic" | "difficulty">;
+type ExportChapter = Pick<
+    typeof chaptersTable.$inferSelect,
+    "order" | "title" | "lessonText"
+>;
 
 export default function ExportCourseButtons({
     course,
     chapters,
 }: {
-    course: any;
-    chapters: any[];
+    course: ExportCourse;
+    chapters: ExportChapter[];
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -63,33 +70,37 @@ export default function ExportCourseButtons({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsOpen(!isOpen)}
-                className="h-10 gap-2 font-medium"
+                aria-haspopup="menu"
+                aria-expanded={isOpen}
             >
-                <Download className="w-4 h-4" />
+                <DownloadSimple />
                 Export
-                <ChevronDown
-                    className={`w-4 h-4 opacity-50 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                <CaretDown
+                    className={`size-3.5 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`}
                 />
             </Button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-md border bg-popover text-popover-foreground shadow-md outline-none z-50 animate-in fade-in-80 zoom-in-95">
-                    <div className="flex flex-col p-1">
-                        <button
-                            onClick={handlePDFExport}
-                            className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-3 py-2.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground transition-colors"
-                        >
-                            <FileImage className="w-4 h-4 mr-2" />
-                            Save as PDF
-                        </button>
-                        <button
-                            onClick={handleMarkdownExport}
-                            className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-3 py-2.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground transition-colors"
-                        >
-                            <FileText className="w-4 h-4 mr-2" />
-                            Save as Markdown
-                        </button>
-                    </div>
+                <div
+                    role="menu"
+                    className="absolute left-0 z-50 mt-1.5 w-52 rounded-md border border-foreground/15 bg-popover p-1 text-popover-foreground shadow-[0_8px_24px_-12px_oklch(0.21_0.015_55/0.25)] animate-in fade-in duration-150 motion-reduce:animate-none sm:right-0 sm:left-auto"
+                >
+                    <button
+                        role="menuitem"
+                        onClick={handlePDFExport}
+                        className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-sm px-2.5 text-sm outline-none transition-colors hover:bg-muted focus-visible:bg-muted"
+                    >
+                        <FilePdf className="size-4 text-muted-foreground" />
+                        Save as PDF
+                    </button>
+                    <button
+                        role="menuitem"
+                        onClick={handleMarkdownExport}
+                        className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-sm px-2.5 text-sm outline-none transition-colors hover:bg-muted focus-visible:bg-muted"
+                    >
+                        <FileMd className="size-4 text-muted-foreground" />
+                        Save as Markdown
+                    </button>
                 </div>
             )}
         </div>

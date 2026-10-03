@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Share2, Link as LinkIcon, Check, Globe, Lock } from "lucide-react";
+import { LinkSimple, Check, Globe, Lock } from "@phosphor-icons/react";
 import { toggleCoursePublic } from "@/lib/actions/course.actions";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -44,44 +44,41 @@ export default function ShareCourseButton({
     };
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
             <Button
                 variant={isPublic ? "default" : "outline"}
                 size="sm"
                 onClick={handleToggle}
                 disabled={isLoading}
-                className="gap-2"
+                aria-pressed={isPublic}
+                title={
+                    isPublic
+                        ? "Anyone with the link can read this course. Click to make it private."
+                        : "Only you can see this course. Click to make a share link."
+                }
             >
-                {isLoading ? (
-                    <Spinner className="w-4 h-4" />
-                ) : isPublic ? (
-                    <Globe className="w-4 h-4" />
-                ) : (
-                    <Lock className="w-4 h-4" />
-                )}
+                {isLoading ? <Spinner /> : isPublic ? <Globe /> : <Lock />}
                 {isPublic ? "Public" : "Private"}
             </Button>
 
             {isPublic && shareSlug && (
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyLink}
-                    className="gap-2"
-                >
+                <Button variant="outline" size="sm" onClick={handleCopyLink}>
                     {copied ? (
                         <>
-                            <Check className="w-4 h-4 text-green-500" />
-                            Copied!
+                            <Check weight="bold" className="text-success" />
+                            Copied
                         </>
                     ) : (
                         <>
-                            <LinkIcon className="w-4 h-4" />
-                            Copy Link
+                            <LinkSimple />
+                            Copy link
                         </>
                     )}
                 </Button>
             )}
+            <span aria-live="polite" className="sr-only">
+                {copied ? "Share link copied" : ""}
+            </span>
         </div>
     );
 }

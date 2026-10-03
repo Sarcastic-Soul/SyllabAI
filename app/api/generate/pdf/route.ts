@@ -1,52 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import crypto from "crypto";
-import { db } from "@/lib/db";
-import { users, courses } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { checkRateLimit } from "@/lib/ratelimit";
-import { generatePdfCourse } from "@/lib/generator/courseGenerator";
+import { checkGenerationAccess } from "@/lib/api/generationAccess";
+import { generatePdfCourse, type CourseDifficulty } from "@/lib/generator/courseGenerator";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+// Vercel rejects request bodies over 4.5 MB before they reach this handler,
+// so the file limit sits below that to leave room for the other form fields.
+const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4 MB
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, has } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const rateLimit = await checkRateLimit(userId);
-    if (!rateLimit.success) {
-      return NextResponse.json(
-        { error: "RATE_LIMIT_EXCEEDED: You have reached your hourly AI course generation limit." },
-        { status: 429 }
-      );
-    }
-
-    const userDb = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
-    if (!userDb) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const isPro = has({ plan: "pro" }) || userDb.subscriptionPlan === "pro";
-
-    if (!isPro) {
-      const activeCourses = await db.query.courses.findMany({
-        where: eq(courses.author, userId),
-      });
-      if (activeCourses.length >= 2) {
-        return NextResponse.json(
-          { error: "BASIC_PLAN_LIMIT_REACHED: Basic plan allows maximum 2 courses. Please upgrade or delete an existing course." },
-          { status: 403 }
-        );
-      }
-    }
+    const access = await checkGenerationAccess();
+    if (!access.ok) return access.response;
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -61,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
-        { error: "FILE_TOO_LARGE: Uploaded document exceeds the maximum 5MB size limit for serverless execution." },
+        { error: "FILE_TOO_LARGE: The uploaded document is over the 4 MB size limit." },
         { status: 400 }
       );
     }
@@ -75,27 +41,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const pdfBase64 = Buffer.from(arrayBuffer).toString("base64");
-
-    const jobId = `job_pdf_${crypto.randomUUID()}`;
-
     // Execute generation synchronously within Vercel serverless request duration
-    const courseId = await generatePdfCourse(jobId, {
-      userId,
+    const courseId = await generatePdfCourse({
+      userId: access.userId,
       topic,
       description,
       filename: file.name,
-      pdfBase64,
+      fileBytes: new Uint8Array(await file.arrayBuffer()),
       duration,
-      difficulty: difficulty as "Beginner" | "Intermediate" | "Advanced",
+      difficulty: difficulty as CourseDifficulty,
     });
 
-    return NextResponse.json({ success: true, jobId, courseId });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, courseId });
+  } catch (error) {
     console.error("Error in /api/generate/pdf:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to process document upload" },
+      { error: (error instanceof Error && error.message) || "Failed to process document upload" },
       { status: 400 }
     );
   }

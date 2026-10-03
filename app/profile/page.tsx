@@ -5,14 +5,8 @@ import { eq, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { users } from "@/lib/db/schema";
-import {
-  BookOpen,
-  GraduationCap,
-  Target,
-  Trophy,
-  Bookmark,
-  Flame,
-} from "lucide-react";
+import { ArrowRight, BookmarkSimple } from "@phosphor-icons/react/dist/ssr";
+import { Button } from "@/components/ui/button";
 
 const ProfilePage = async () => {
   const { userId } = await auth();
@@ -99,102 +93,90 @@ const ProfilePage = async () => {
     });
   });
 
+  const stats = [
+    {
+      label: "Day streak",
+      value: `${currentStreak}`,
+      note: currentStreak > 0 ? "Study today to keep it" : "Finish a chapter to start one",
+    },
+    {
+      label: "Quiz average",
+      value: totalQuizzesTaken > 0 ? `${averageGrade}%` : "–",
+      note: `${totalQuizzesTaken} ${totalQuizzesTaken === 1 ? "quiz" : "quizzes"} taken`,
+    },
+    {
+      label: "Chapters done",
+      value: `${overallProgress}%`,
+      note: `${completedModules} of ${totalModules}`,
+    },
+    {
+      label: "Courses",
+      value: `${userCourses.length}`,
+      note: userCourses.length === 1 ? "course made" : "courses made",
+    },
+    {
+      label: "Questions answered",
+      value: `${totalQuizzesTaken * 3}`,
+      note: `${totalCorrectAnswers} correct`,
+    },
+  ];
+
+  const rowLink =
+    "flex flex-col gap-3 p-4 transition-colors duration-150 hover:bg-muted/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring sm:flex-row sm:items-center sm:gap-6 sm:px-5";
+
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8 mt-4">
-      {/* Header Profile Section */}
-      <div className="flex items-center gap-6 pb-8 border-b">
-        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20">
-          <img
-            src={user.imageUrl}
-            alt={user.firstName || "User"}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div>
-          <h1 className="text-4xl font-bold">
-            {user.firstName}'s Learning Profile
+    <main className="mx-auto w-full max-w-6xl space-y-12 px-4 pt-8 pb-16 sm:px-6 sm:pt-10">
+      <header className="flex items-center gap-4 sm:gap-5">
+        <img
+          src={user.imageUrl}
+          alt=""
+          className="size-14 shrink-0 rounded-full border border-border object-cover sm:size-16"
+        />
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold text-balance sm:text-4xl">
+            {user.firstName ? `${user.firstName}'s progress` : "Your progress"}
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-1 truncate text-sm text-muted-foreground">
             {user.emailAddresses[0].emailAddress}
           </p>
         </div>
-      </div>
+      </header>
 
-      {/* Analytics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="p-6 border rounded-2xl bg-card space-y-2">
-          <div className="flex items-center gap-2 text-orange-500">
-            <Flame className="w-5 h-5" />
-            <h3 className="font-semibold">Learning Streak</h3>
+      {/* Stats: one panel with hairline dividers */}
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-5">
+        {stats.map((stat, i) => (
+          <div
+            key={stat.label}
+            className={`flex flex-col bg-card p-4 sm:p-5 ${i === 0 ? "col-span-2 lg:col-span-1" : ""}`}
+          >
+            <dt className="text-sm text-muted-foreground">{stat.label}</dt>
+            <dd className="mt-2 font-mono text-3xl leading-none font-medium tabular-nums">
+              {stat.value}
+            </dd>
+            <dd className="mt-2 text-xs text-muted-foreground">{stat.note}</dd>
           </div>
-          <p className="text-4xl font-bold">
-            {currentStreak}{" "}
-            <span className="text-xl text-muted-foreground">Days</span>
-          </p>
-          <p className="text-sm text-muted-foreground">Keep it up!</p>
-        </div>
+        ))}
+      </dl>
 
-        <div className="p-6 border rounded-2xl bg-card space-y-2">
-          <div className="flex items-center gap-2 text-primary">
-            <Trophy className="w-5 h-5" />
-            <h3 className="font-semibold">Average Grade</h3>
-          </div>
-          <p className="text-4xl font-bold">{averageGrade}%</p>
-          <p className="text-sm text-muted-foreground">
-            Across {totalQuizzesTaken} quizzes
-          </p>
-        </div>
-
-        <div className="p-6 border rounded-2xl bg-card space-y-2">
-          <div className="flex items-center gap-2 text-blue-500">
-            <Target className="w-5 h-5" />
-            <h3 className="font-semibold">Overall Progress</h3>
-          </div>
-          <p className="text-4xl font-bold">{overallProgress}%</p>
-          <p className="text-sm text-muted-foreground">
-            {completedModules} of {totalModules} modules
-          </p>
-        </div>
-
-        <div className="p-6 border rounded-2xl bg-card space-y-2">
-          <div className="flex items-center gap-2 text-green-500">
-            <BookOpen className="w-5 h-5" />
-            <h3 className="font-semibold">Courses Enrolled</h3>
-          </div>
-          <p className="text-4xl font-bold">{userCourses.length}</p>
-          <p className="text-sm text-muted-foreground">Active learning paths</p>
-        </div>
-
-        <div className="p-6 border rounded-2xl bg-card space-y-2">
-          <div className="flex items-center gap-2 text-primary">
-            <GraduationCap className="w-5 h-5" />
-            <h3 className="font-semibold">Questions Answered</h3>
-          </div>
-          <p className="text-4xl font-bold">{totalQuizzesTaken * 3}</p>
-          <p className="text-sm text-muted-foreground">
-            {totalCorrectAnswers} correct answers
-          </p>
-        </div>
-      </div>
-
-      {/* Course List */}
-      <div className="pt-8">
-        <h2 className="text-2xl font-bold mb-6">Your Courses</h2>
+      <section aria-labelledby="profile-courses">
+        <h2 id="profile-courses" className="text-xl font-semibold">
+          Courses
+        </h2>
 
         {userCourses.length === 0 ? (
-          <div className="text-center py-12 border border-dashed rounded-2xl bg-secondary/20">
-            <p className="text-muted-foreground">
-              You haven't started any courses yet.
+          <div className="mt-4 rounded-xl border border-dashed border-foreground/25 px-6 py-10">
+            <p className="font-medium">No courses yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Make one from a topic or a PDF and your progress shows up here.
             </p>
-            <Link
-              href="/courses/new"
-              className="text-primary hover:underline mt-2 inline-block"
-            >
-              Generate your first course →
-            </Link>
+            <Button asChild variant="outline" className="mt-5">
+              <Link href="/courses/new">
+                New course <ArrowRight />
+              </Link>
+            </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
             {userCourses.map((course) => {
               const courseCompletedModules = course.chapters.filter(
                 (c) => c.isCompleted,
@@ -207,77 +189,77 @@ const ProfilePage = async () => {
                   : 0;
 
               return (
-                <Link href={`/courses/${course.id}`} key={course.id}>
-                  <div className="p-6 border rounded-xl hover:border-primary transition-colors cursor-pointer bg-card space-y-4 h-full flex flex-col justify-between">
-                    <div>
-                      <span className="text-xs font-semibold bg-secondary px-2 py-1 rounded-full capitalize">
-                        {course.difficulty}
-                      </span>
-                      <h3 className="text-xl font-semibold capitalize mt-3 line-clamp-2">
+                <li key={course.id}>
+                  <Link href={`/courses/${course.id}`} className={rowLink}>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate font-sans text-base font-semibold tracking-normal capitalize">
                         {course.topic}
                       </h3>
+                      <p className="mt-0.5 font-mono text-xs capitalize text-muted-foreground">
+                        {course.difficulty} / {courseCompletedModules} of{" "}
+                        {course.chapters.length} chapters
+                      </p>
                     </div>
-
-                    <div className="space-y-2 pt-4">
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Progress</span>
-                        <span>{courseProgress}%</span>
-                      </div>
-                      <div className="w-full bg-secondary rounded-full h-2">
+                    <div className="flex items-center gap-3 sm:w-56">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
                         <div
-                          className="bg-primary h-2 rounded-full transition-all"
+                          className={`h-full rounded-full ${courseProgress === 100 ? "bg-success" : "bg-primary"}`}
                           style={{ width: `${courseProgress}%` }}
-                        ></div>
+                        />
                       </div>
+                      <span className="w-10 text-right font-mono text-xs tabular-nums">
+                        {courseProgress}%
+                      </span>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-      </div>
+      </section>
 
-      {/* NEW: Bookmarked Chapters List */}
-      <div className="pt-12 border-t mt-12">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-          <Bookmark className="w-6 h-6 text-primary" />
-          Saved for Later
+      <section aria-labelledby="profile-bookmarks">
+        <h2 id="profile-bookmarks" className="text-xl font-semibold">
+          Bookmarked chapters
         </h2>
 
         {bookmarkedChapters.length === 0 ? (
-          <div className="text-center py-12 border border-dashed rounded-2xl bg-secondary/20">
-            <p className="text-muted-foreground">
-              You haven't bookmarked any chapters yet.
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-dashed border-foreground/25 px-6 py-8">
+            <BookmarkSimple className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              No bookmarks yet. On a course page, tap the bookmark next to a
+              chapter to keep it here for later.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
             {bookmarkedChapters.map((bookmark) => (
-              <Link
-                href={`/courses/${bookmark.courseId}/chapters/${bookmark.chapterId}`}
-                key={bookmark.chapterId}
-              >
-                <div className="p-6 border rounded-xl hover:border-primary transition-colors cursor-pointer bg-card space-y-3 h-full flex flex-col">
-                  <span className="text-xs font-semibold text-primary uppercase tracking-wider line-clamp-1">
-                    From: {bookmark.courseTitle}
-                  </span>
-                  <h3 className="text-lg font-bold line-clamp-2">
-                    {bookmark.chapterTitle}
-                  </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-3 flex-1">
-                    {bookmark.content}
-                  </p>
-                  <div className="pt-4 text-sm font-medium text-primary flex items-center gap-2">
-                    Review Chapter →
+              <li key={bookmark.chapterId}>
+                <Link
+                  href={`/courses/${bookmark.courseId}/chapters/${bookmark.chapterId}`}
+                  className={rowLink}
+                >
+                  <BookmarkSimple weight="fill" className="hidden size-5 shrink-0 text-primary sm:block" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-sans text-base font-semibold tracking-normal">
+                      {bookmark.chapterTitle}
+                    </h3>
+                    <p className="mt-0.5 truncate font-mono text-xs capitalize text-muted-foreground">
+                      {bookmark.courseTitle}
+                    </p>
+                    <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
+                      {bookmark.content}
+                    </p>
                   </div>
-                </div>
-              </Link>
+                  <ArrowRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden />
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 

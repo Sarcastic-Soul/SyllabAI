@@ -2,8 +2,9 @@ import { getCourseBySlug } from "@/lib/queries";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { BookOpen, PlayCircle, Lock } from "lucide-react";
-import { SignUpButton } from "@clerk/nextjs";
+import Image from "next/image";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { Show, SignUpButton } from "@clerk/nextjs";
 import { Metadata } from "next";
 
 interface SharedCoursePageProps {
@@ -18,12 +19,12 @@ export async function generateMetadata({ params }: SharedCoursePageProps): Promi
 
     if (!course || !course.isPublic) {
         return {
-            title: "Course Not Found | SyllabAI",
+            title: "Course not found | SyllabAI",
         };
     }
 
     const title = `${course.topic} (${course.difficulty}) | SyllabAI`;
-    const description = `Study "${course.topic}" on SyllabAI with ${course.chapters.length} interactive modules, AI flashcards, and quizzes.`;
+    const description = `Read "${course.topic}" on SyllabAI: ${course.chapters.length} chapters at ${course.difficulty} level, with quizzes and flashcards when you sign up.`;
 
     return {
         title,
@@ -51,90 +52,106 @@ const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {
     const totalChapters = course.chapters.length;
 
     return (
-        <div className="max-w-6xl mx-auto p-6 space-y-10">
-            {/* Public Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
-                <BookOpen className="w-4 h-4" />
-                Shared Course
-            </div>
+        <main className="mx-auto w-full max-w-3xl px-4 pt-6 pb-16 sm:px-6 sm:pt-8">
+            <Show when="signed-out">
+                <div className="mb-8 flex items-center justify-between gap-4 border-b border-border pb-4">
+                    <Link
+                        href="/"
+                        aria-label="SyllabAI home"
+                        className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+                    >
+                        <Image src="/logo.svg" alt="SyllabAI" width={80} height={50} style={{ width: "auto" }} />
+                    </Link>
+                    <SignUpButton>
+                        <Button variant="outline" size="sm">
+                            Sign up free
+                        </Button>
+                    </SignUpButton>
+                </div>
+            </Show>
 
-            {/* Course Header */}
-            <div className="space-y-4">
-                <h1 className="text-4xl font-bold capitalize">{course.topic}</h1>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                    <span className="px-3 py-1 bg-secondary rounded-full capitalize text-foreground font-medium">
-                        {course.difficulty}
+            <header className="space-y-3">
+                <p className="font-mono text-xs text-muted-foreground">
+                    Shared course, read only
+                </p>
+                <h1 className="text-3xl font-bold capitalize text-balance break-words sm:text-4xl">
+                    {course.topic}
+                </h1>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-muted-foreground">
+                    <span className="capitalize text-foreground">{course.difficulty}</span>
+                    <span aria-hidden>/</span>
+                    <span>
+                        {totalChapters} {totalChapters === 1 ? "chapter" : "chapters"}
                     </span>
-                    <span>{totalChapters} Modules</span>
-                    <span>•</span>
+                    <span aria-hidden>/</span>
                     <span>
                         Created {new Date(course.createdAt).toLocaleDateString()}
                     </span>
-                </div>
-            </div>
-
-            {/* Sign Up CTA */}
-            <div className="p-6 rounded-2xl border-2 border-primary/20 bg-primary/5 flex flex-col md:flex-row items-center gap-6">
-                <div className="flex-1 space-y-2">
-                    <h3 className="text-xl font-bold flex items-center gap-2">
-                        <Lock className="w-5 h-5" /> Want the full experience?
-                    </h3>
-                    <p className="text-muted-foreground">
-                        Sign up to take quizzes, generate flashcards, track your progress, and chat with the AI Study Buddy.
-                    </p>
-                </div>
-                <SignUpButton>
-                    <Button size="lg" className="shrink-0">
-                        Sign Up Free
-                    </Button>
-                </SignUpButton>
-            </div>
-
-            {/* Course Content (Read-Only) */}
-            <div className="space-y-6">
-                <h2 className="text-2xl font-semibold">Course Content</h2>
-                <div className="grid gap-4">
-                    {course.chapters.map((chapter) => (
-                        <Link
-                            key={chapter.id}
-                            href={`/shared/${slug}/chapters/${chapter.id}`}
-                        >
-                            <div className="p-6 border rounded-xl bg-card hover:border-primary/50 transition-colors flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                                <div className="space-y-2 flex-1">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-sm font-medium text-muted-foreground">
-                                            Chapter {chapter.order}
-                                        </span>
-                                    </div>
-                                    <h3 className="text-xl font-medium">
-                                        {chapter.title}
-                                    </h3>
-                                    <p className="text-sm text-muted-foreground line-clamp-2">
-                                        {chapter.content}
-                                    </p>
-                                </div>
-                                <Button variant="outline" className="shrink-0 w-[140px]">
-                                    <PlayCircle className="w-4 h-4 mr-2" /> Read
-                                </Button>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-            </div>
-
-            {/* Bottom CTA */}
-            <div className="text-center py-12 border-t space-y-4">
-                <h3 className="text-2xl font-bold">Ready to learn interactively?</h3>
-                <p className="text-muted-foreground max-w-lg mx-auto">
-                    Create your own AI-generated courses, take quizzes, and study with a voice-enabled AI tutor.
                 </p>
-                <SignUpButton>
-                    <Button size="lg" className="rounded-full px-8">
-                        Get Started — It&apos;s Free
-                    </Button>
-                </SignUpButton>
-            </div>
-        </div>
+            </header>
+
+            <section aria-labelledby="shared-chapters" className="mt-10">
+                <h2 id="shared-chapters" className="text-xl font-semibold">
+                    Chapters
+                </h2>
+                {totalChapters === 0 ? (
+                    <p className="mt-4 rounded-xl border border-dashed border-foreground/25 px-6 py-10 text-muted-foreground">
+                        This course has no chapters yet.
+                    </p>
+                ) : (
+                    <ol className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                        {course.chapters.map((chapter) => (
+                            <li key={chapter.id}>
+                                <Link
+                                    href={`/shared/${slug}/chapters/${chapter.id}`}
+                                    className="group flex items-start gap-4 p-4 transition-colors duration-150 hover:bg-muted/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring sm:p-5"
+                                >
+                                    <span
+                                        aria-hidden
+                                        className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-foreground/25 font-mono text-xs tabular-nums text-muted-foreground"
+                                    >
+                                        {chapter.order}
+                                    </span>
+                                    <div className="min-w-0 flex-1 space-y-1">
+                                        <h3 className="text-base leading-snug font-semibold sm:text-lg">
+                                            <span className="sr-only">Chapter {chapter.order}: </span>
+                                            {chapter.title}
+                                        </h3>
+                                        <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                            {chapter.content}
+                                        </p>
+                                    </div>
+                                    <ArrowRight
+                                        className="mt-1.5 size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                                        aria-hidden
+                                    />
+                                </Link>
+                            </li>
+                        ))}
+                    </ol>
+                )}
+            </section>
+
+            <Show when="signed-out">
+                <section className="mt-12 flex flex-col gap-5 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="max-w-[50ch]">
+                        <h2 className="text-xl font-semibold">
+                            Study this course properly
+                        </h2>
+                        <p className="mt-1.5 leading-relaxed text-muted-foreground">
+                            With a free account you can take the quizzes, review
+                            flashcards, track your progress and make courses of
+                            your own.
+                        </p>
+                    </div>
+                    <SignUpButton>
+                        <Button size="lg" className="shrink-0">
+                            Sign up free
+                        </Button>
+                    </SignUpButton>
+                </section>
+            </Show>
+        </main>
     );
 };
 

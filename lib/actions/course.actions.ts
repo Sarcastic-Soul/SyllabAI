@@ -3,12 +3,9 @@
 import { db } from "@/lib/db";
 import { courses, users } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { revalidatePath } from "next/cache";
 import { eq, sql } from "drizzle-orm";
-import { withRetry } from "@/lib/utils/retry";
-import { checkRateLimit } from "@/lib/ratelimit";
-import { getSmartGenerativeModel } from "@/lib/quota";
+import { generate } from "@/lib/ai/generate";
 
 export async function deleteCourse(courseId: string) {
   try {
@@ -47,10 +44,6 @@ export async function generateCourseCheatSheet(courseId: string) {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    const rateLimit = await checkRateLimit(userId);
-    if (!rateLimit.success) {
-      throw new Error("RATE_LIMIT_EXCEEDED: You have reached your hourly AI generation limit.");
-    }
 
     const course = await db.query.courses.findFirst({
       where: eq(courses.id, courseId),
@@ -87,10 +80,13 @@ export async function generateCourseCheatSheet(courseId: string) {
       ${chapterTexts.substring(0, 50000)}
     `;
 
-    const { model } = await getSmartGenerativeModel("gemini-3.6-flash");
-    const result = await withRetry(() => model.generateContent(prompt));
-    let cheatSheetContent = result.response.text();
-    cheatSheetContent = cheatSheetContent.replace(/\\n/g, "\n");
+    const result = await generate({
+      step: "cheat_sheet",
+      prompt,
+      preferredModel: "gemini-3.8-flash",
+      userId,
+    });
+    const cheatSheetContent = result.data.replace(/\\n/g, "\n");
 
     await db
       .update(courses)

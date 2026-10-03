@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { List, X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import NavItems from "@/components/shared/NavItems";
 
@@ -13,14 +13,22 @@ export default function MobileMenu() {
             <Button
                 variant="ghost"
                 size="icon"
+                className="size-11"
                 onClick={() => setIsOpen(!isOpen)}
-                aria-label="Toggle menu"
+                aria-label={isOpen ? "Close menu" : "Open menu"}
+                aria-expanded={isOpen}
+                aria-controls="mobile-menu"
             >
-                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {isOpen ? <X className="size-5" /> : <List className="size-5" />}
             </Button>
 
             {isOpen && (
-                <div className="absolute top-16 left-0 right-0 border-b bg-background shadow-lg p-4 flex flex-col gap-4 z-50 animate-in slide-in-from-top-2">
+                <div
+                    id="mobile-menu"
+                    // Any link tap inside closes the menu
+                    onClick={() => setIsOpen(false)}
+                    className="absolute inset-x-0 top-full z-50 border-b border-border bg-card px-4 py-2 animate-in fade-in slide-in-from-top-1 duration-150 motion-reduce:animate-none"
+                >
                     <NavItems />
                 </div>
             )}

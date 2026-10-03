@@ -1,20 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Mic,
-  MicOff,
-  Bot,
-  VolumeX,
-  Volume2,
+  Microphone,
+  MicrophoneSlash,
+  SpeakerHigh,
+  SpeakerSlash,
   ArrowLeft,
-  Trash2,
-  Send,
-  AlertCircle,
-  Sparkles,
-} from "lucide-react";
+  Trash,
+  PaperPlaneRight,
+  WarningCircle,
+} from "@phosphor-icons/react";
+import { motion, useReducedMotion } from "motion/react";
 import { Spinner } from "@/components/ui/spinner";
 import {
   askStudyBuddy,
@@ -37,29 +36,117 @@ type Message = {
   text: string;
 };
 
+// Small local types for the Web Speech API (not in every TypeScript DOM lib).
+interface SpeechRecognitionResultEventLike {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+}
+
+interface SpeechRecognitionErrorEventLike {
+  error: string;
+}
+
+interface SpeechRecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionResultEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | undefined {
+  const w = window as Window & {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+  return w.SpeechRecognition || w.webkitSpeechRecognition;
+}
+
+// Browser feature detection, read through useSyncExternalStore so the server
+// render and the first client render agree.
+const subscribeNever = () => () => {};
+const getFalse = () => false;
+
+let sttSupportedCache: boolean | undefined;
+function getSttSupported(): boolean {
+  if (sttSupportedCache === undefined) {
+    const SpeechRecognition = getSpeechRecognitionConstructor();
+    if (!SpeechRecognition) {
+      sttSupportedCache = false;
+    } else {
+      try {
+        new SpeechRecognition();
+        sttSupportedCache = true;
+      } catch {
+        sttSupportedCache = false;
+      }
+    }
+  }
+  return sttSupportedCache;
+}
+
+const NO_VOICES: SpeechSynthesisVoice[] = [];
+let voicesCache: SpeechSynthesisVoice[] | undefined;
+
+function getVoicesSnapshot(): SpeechSynthesisVoice[] {
+  if (voicesCache === undefined) {
+    voicesCache = window.speechSynthesis ? window.speechSynthesis.getVoices() : NO_VOICES;
+  }
+  return voicesCache;
+}
+
+function getServerVoicesSnapshot(): SpeechSynthesisVoice[] {
+  return NO_VOICES;
+}
+
+function subscribeToVoices(onChange: () => void) {
+  const synth = window.speechSynthesis;
+  if (!synth) return () => {};
+  // Voices can load between the first render and this subscription.
+  const current = synth.getVoices();
+  if (current.length !== voicesCache?.length) voicesCache = current;
+  synth.onvoiceschanged = () => {
+    voicesCache = synth.getVoices();
+    onChange();
+  };
+  return () => {
+    synth.onvoiceschanged = null;
+  };
+}
+
 export default function StudyBuddyInteractive({
   courseId,
   courseTopic,
   courseStructure,
 }: StudyBuddyProps) {
-  const [isSttSupported, setIsSttSupported] = useState(false);
-  const [isTtsSupported, setIsTtsSupported] = useState(false);
+  const isSttSupported = useSyncExternalStore(subscribeNever, getSttSupported, getFalse);
+  const availableVoices = useSyncExternalStore(
+    subscribeToVoices,
+    getVoicesSnapshot,
+    getServerVoicesSnapshot,
+  );
+  const isTtsSupported = availableVoices.length > 0;
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [speechError, setSpeechError] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
 
   const [conversation, setConversation] = useState<Message[]>([
     {
       id: "welcome",
       role: "ai",
-      text: "Hi there! I'm your Study Buddy. Ask me anything about this course.",
+      text: "Hi. Ask me anything about this course, like a term you did not get or how two ideas connect.",
     },
   ]);
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUtterances = useRef<SpeechSynthesisUtterance[]>([]);
 
@@ -89,79 +176,58 @@ export default function StudyBuddyInteractive({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation, isProcessing, isListening]);
 
-  // Initialize & Detect Speech Capabilities
+  // Set up speech recognition
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      // 1. STT Detection
-      const SpeechRecognition =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = getSpeechRecognitionConstructor();
 
-      if (SpeechRecognition) {
-        try {
-          const recognition = new SpeechRecognition();
-          recognition.continuous = false;
-          recognition.interimResults = true;
-          recognition.lang = "en-US";
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
 
-          recognition.onstart = () => {
-            setIsListening(true);
-            setSpeechError(null);
-          };
-
-          recognition.onresult = (event: any) => {
-            let currentTranscript = "";
-            for (let i = 0; i < event.results.length; i++) {
-              currentTranscript += event.results[i][0].transcript;
-            }
-            setInputValue(currentTranscript);
-          };
-
-          recognition.onerror = (event: any) => {
-            setIsListening(false);
-            if (event.error === "network") {
-              setSpeechError("Voice recognition network error. You can type your message below.");
-            } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-              setSpeechError("Microphone access denied or unsupported.");
-            } else if (event.error !== "no-speech" && event.error !== "aborted") {
-              setSpeechError(`Voice error: ${event.error}`);
-            }
-          };
-
-          recognition.onend = () => {
-            setIsListening(false);
-          };
-
-          recognitionRef.current = recognition;
-          setIsSttSupported(true);
-        } catch (e) {
-          setIsSttSupported(false);
-        }
-      } else {
-        setIsSttSupported(false);
-      }
-
-      // 2. TTS Detection
-      if (window.speechSynthesis) {
-        const updateVoices = () => {
-          const voices = window.speechSynthesis.getVoices();
-          setAvailableVoices(voices);
-          setIsTtsSupported(voices.length > 0);
+        recognition.onstart = () => {
+          setIsListening(true);
+          setSpeechError(null);
         };
 
-        updateVoices();
-        window.speechSynthesis.onvoiceschanged = updateVoices;
-      } else {
-        setIsTtsSupported(false);
+        recognition.onresult = (event) => {
+          let currentTranscript = "";
+          for (let i = 0; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript;
+          }
+          setInputValue(currentTranscript);
+        };
+
+        recognition.onerror = (event) => {
+          setIsListening(false);
+          if (event.error === "network") {
+            setSpeechError("Voice input could not reach the network. Type your question instead.");
+          } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+            setSpeechError("Microphone access is blocked. Allow it in your browser settings, or type your question.");
+          } else if (event.error !== "no-speech" && event.error !== "aborted") {
+            setSpeechError(`Voice error: ${event.error}`);
+          }
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+      } catch {
+        // isSttSupported already reports false when construction fails
       }
     }
 
     return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
+      if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
       try {
         recognitionRef.current?.stop();
-      } catch (e) {}
+      } catch {}
     };
   }, []);
 
@@ -173,7 +239,7 @@ export default function StudyBuddyInteractive({
         {
           id: "welcome",
           role: "ai",
-          text: "Hi there! I'm your Study Buddy. Ask me anything about this course.",
+          text: "Hi. Ask me anything about this course, like a term you did not get or how two ideas connect.",
         },
       ]);
     } catch (err) {
@@ -189,12 +255,12 @@ export default function StudyBuddyInteractive({
     if (isListening) {
       try {
         recognitionRef.current?.stop();
-      } catch (e) {}
+      } catch {}
       setIsListening(false);
     } else {
       try {
         recognitionRef.current?.start();
-      } catch (e) {
+      } catch {
         setIsListening(true);
       }
     }
@@ -289,7 +355,7 @@ export default function StudyBuddyInteractive({
     if (isListening) {
       try {
         recognitionRef.current?.stop();
-      } catch (e) {}
+      } catch {}
       setIsListening(false);
     }
 
@@ -298,7 +364,7 @@ export default function StudyBuddyInteractive({
     setIsProcessing(true);
     stopAudio();
 
-    const userMsgId = Date.now().toString();
+    const userMsgId = crypto.randomUUID();
     setConversation((prev) => [
       ...prev,
       { id: userMsgId, role: "user", text: messageText },
@@ -313,7 +379,7 @@ export default function StudyBuddyInteractive({
       );
 
       const aiResponseText = typeof answer === "string" ? answer : answer.answer;
-      const aiMsgId = (Date.now() + 1).toString();
+      const aiMsgId = crypto.randomUUID();
 
       setConversation((prev) => [
         ...prev,
@@ -323,13 +389,13 @@ export default function StudyBuddyInteractive({
       if (isTtsSupported) {
         speakMessage(aiMsgId, aiResponseText);
       }
-    } catch (error) {
+    } catch {
       setConversation((prev) => [
         ...prev,
         {
-          id: Date.now().toString(),
+          id: crypto.randomUUID(),
           role: "ai",
-          text: "Sorry, I ran into an error processing your request. Please try again.",
+          text: "That did not go through. Send your question again.",
         },
       ]);
     } finally {
@@ -337,95 +403,109 @@ export default function StudyBuddyInteractive({
     }
   };
 
+  const status = isListening
+    ? "Listening"
+    : speakingMessageId
+      ? "Reading aloud"
+      : isProcessing
+        ? "Thinking"
+        : null;
+
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6 h-[90vh] flex flex-col">
-      {/* Top Header */}
-      <div className="flex items-center justify-between pb-4 border-b shrink-0">
-        <Link href={`/courses/${courseId}`}>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Back to Course</span>
-          </Button>
-        </Link>
+    // 4rem navbar plus its 1px border
+    <div className="mx-auto flex h-[calc(100dvh-4rem-1px)] w-full max-w-3xl flex-col px-4 sm:px-6">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border py-2">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="-ml-2 text-muted-foreground hover:text-foreground"
+        >
+          <Link href={`/courses/${courseId}`} aria-label="Back to course">
+            <ArrowLeft />
+            <span className="hidden sm:inline">Course</span>
+          </Link>
+        </Button>
 
-        {/* Center: Bot Avatar Status Icon */}
-        <div className="relative flex items-center justify-center">
-          {speakingMessageId && (
-            <div className="absolute w-9 h-9 bg-orange-500/30 rounded-full animate-ping" />
-          )}
-          {isListening && (
-            <div className="absolute w-9 h-9 bg-destructive/30 rounded-full animate-pulse" />
-          )}
-          <div
-            className={cn(
-              "relative z-10 p-2 rounded-full transition-all duration-300 shadow-sm",
-              speakingMessageId
-                ? "bg-orange-500 text-white shadow-orange-500/50"
-                : isListening
-                ? "bg-destructive text-white shadow-destructive/50"
-                : "bg-secondary text-muted-foreground"
+        <div className="min-w-0 text-center">
+          <h1 className="truncate text-sm font-semibold">Study buddy</h1>
+          <p
+            aria-live="polite"
+            className="flex items-center justify-center gap-1.5 truncate font-mono text-xs text-muted-foreground"
+          >
+            {status ? (
+              <>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    isListening ? "bg-destructive" : "bg-primary",
+                  )}
+                />
+                {status}
+              </>
+            ) : (
+              <span className="truncate capitalize">{courseTopic}</span>
             )}
-          >
-            <Bot className="w-5 h-5" />
-          </div>
+          </p>
         </div>
 
-        {/* Right: Study Buddy AI Pill & Actions */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            Study Buddy AI
-          </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleClearHistory}
+          className="-mr-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          title="Clear conversation"
+          aria-label="Clear conversation"
+        >
+          <Trash />
+        </Button>
+      </header>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleClearHistory}
-            className="text-muted-foreground hover:text-destructive transition-colors"
-            title="Clear Conversation History"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-
-
-
-      {/* Scrollable Message Container */}
-      <div className="flex-1 overflow-y-auto px-2 space-y-4 mb-4 scrollbar-thin">
+      {/* Messages */}
+      <div className="flex-1 space-y-5 overflow-y-auto py-5">
         {conversation.map((msg) => (
-          <div
+          <motion.div
             key={msg.id}
+            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className={cn(
-              "flex flex-col max-w-[85%]",
-              msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
+              "flex flex-col",
+              msg.role === "user"
+                ? "ml-auto max-w-[85%] items-end"
+                : "mr-auto max-w-full items-start sm:max-w-[90%]"
             )}
           >
-            <div className="flex items-center gap-2 mb-1 px-1">
-              <span className="text-xs font-medium text-muted-foreground">
-                {msg.role === "user" ? "You" : "Study Buddy"}
+            <div className="mb-1 flex min-h-6 items-center gap-1">
+              <span className="font-mono text-xs text-muted-foreground">
+                {msg.role === "user" ? "You" : "Study buddy"}
               </span>
 
-              {/* Render Read Aloud button ONLY if TTS is supported on the client */}
+              {/* Read aloud only shows when the browser supports speech */}
               {msg.role === "ai" && isTtsSupported && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 text-muted-foreground hover:text-foreground"
+                  className={cn(
+                    "size-8",
+                    speakingMessageId === msg.id
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
                   onClick={() => speakMessage(msg.id, msg.text)}
                   title={
-                    speakingMessageId === msg.id ? "Stop Reading" : "Read Aloud"
+                    speakingMessageId === msg.id ? "Stop reading" : "Read aloud"
                   }
+                  aria-label={
+                    speakingMessageId === msg.id ? "Stop reading" : "Read aloud"
+                  }
+                  aria-pressed={speakingMessageId === msg.id}
                 >
                   {speakingMessageId === msg.id ? (
-                    <VolumeX className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+                    <SpeakerSlash weight="fill" />
                   ) : (
-                    <Volume2 className="w-3.5 h-3.5" />
+                    <SpeakerHigh />
                   )}
                 </Button>
               )}
@@ -433,29 +513,31 @@ export default function StudyBuddyInteractive({
 
             <div
               className={cn(
-                "px-4 py-3 rounded-2xl text-sm md:text-base shadow-sm leading-relaxed",
+                "min-w-0 max-w-full text-[0.9375rem] leading-relaxed",
                 msg.role === "user"
-                  ? "bg-orange-500 text-white rounded-br-none"
-                  : "bg-secondary text-foreground rounded-bl-none border border-border/50"
+                  ? "rounded-lg rounded-br-sm bg-foreground px-4 py-2.5 text-background"
+                  : "rounded-lg rounded-bl-sm border border-border bg-card px-4 py-3 text-foreground"
               )}
             >
               {msg.role === "ai" ? (
-                <MarkdownRenderer content={msg.text} />
+                <MarkdownRenderer
+                  content={msg.text}
+                  className="prose-sm prose-p:my-2 first:prose-p:mt-0 last:prose-p:mb-0 sm:prose-base"
+                />
               ) : (
                 msg.text
               )}
             </div>
-          </div>
+          </motion.div>
         ))}
 
-        {/* Loading Indicator */}
         {isProcessing && (
-          <div className="flex flex-col max-w-[85%] mr-auto items-start">
-            <span className="text-xs font-medium text-muted-foreground mb-1 px-1">
-              Study Buddy
+          <div className="mr-auto flex flex-col items-start" role="status">
+            <span className="mb-1 flex min-h-6 items-center font-mono text-xs text-muted-foreground">
+              Study buddy
             </span>
-            <div className="px-4 py-3 rounded-2xl bg-secondary text-muted-foreground flex items-center gap-2 rounded-bl-none shadow-sm border border-border/50">
-              <Spinner className="w-4 h-4" /> Thinking...
+            <div className="flex items-center gap-2 rounded-lg rounded-bl-sm border border-border bg-card px-4 py-3 text-[0.9375rem] text-muted-foreground">
+              <Spinner /> Thinking...
             </div>
           </div>
         )}
@@ -463,45 +545,50 @@ export default function StudyBuddyInteractive({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Speech Error Alert Banner */}
       {speechError && (
-        <div className="mb-2 p-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-between shrink-0 animate-in fade-in slide-in-from-bottom-2">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+        <div
+          role="alert"
+          className="mb-2 flex shrink-0 items-center justify-between gap-3 rounded-md border border-warning/60 bg-warning/10 py-1 pr-1 pl-3 text-sm animate-in fade-in duration-200 motion-reduce:animate-none"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <WarningCircle className="size-4 shrink-0" aria-hidden />
             <span>{speechError}</span>
           </div>
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setSpeechError(null)}
-            className="text-xs hover:underline font-semibold ml-2"
+            className="shrink-0"
           >
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
 
-      {/* Chat Input Controls (Fixed at Bottom) */}
       <form
         onSubmit={handleSendMessage}
-        className="shrink-0 flex items-center gap-2 pt-2 border-t"
+        className="flex shrink-0 items-center gap-2 border-t border-border pt-3 pb-4"
       >
-        <div className="relative flex-1 flex items-center">
+        <div className="relative flex flex-1 items-center">
           <Input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
+            aria-label="Your question"
             placeholder={
               isListening
-                ? "Listening... Speak now"
-                : "Ask your Study Buddy anything..."
+                ? "Listening. Speak now."
+                : "Ask about this course"
             }
             disabled={isProcessing}
             className={cn(
-              "py-6 text-sm md:text-base rounded-xl transition-all",
-              isSttSupported ? "pr-10" : "px-4",
-              isListening && "border-destructive ring-1 ring-destructive/50"
+              "h-12 pointer-coarse:h-12",
+              isSttSupported ? "pr-12" : "",
+              isListening && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
             )}
           />
 
-          {/* Render Mic Button ONLY if STT is supported on the client */}
+          {/* Mic only shows when the browser supports speech recognition */}
           {isSttSupported && (
             <Button
               type="button"
@@ -510,31 +597,31 @@ export default function StudyBuddyInteractive({
               onClick={toggleListening}
               disabled={isProcessing}
               className={cn(
-                "absolute right-2 h-8 w-8 rounded-lg transition-colors",
+                "absolute right-1 size-10 pointer-coarse:size-10",
                 isListening
-                  ? "bg-destructive text-white hover:bg-destructive/90 animate-pulse"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  ? "bg-destructive text-primary-foreground hover:bg-destructive/90"
+                  : "text-muted-foreground hover:text-foreground"
               )}
-              title={isListening ? "Stop listening" : "Speak your message"}
+              title={isListening ? "Stop listening" : "Speak your question"}
+              aria-label={isListening ? "Stop listening" : "Speak your question"}
+              aria-pressed={isListening}
             >
-              {isListening ? (
-                <MicOff className="w-4 h-4" />
-              ) : (
-                <Mic className="w-4 h-4" />
-              )}
+              {isListening ? <MicrophoneSlash weight="fill" /> : <Microphone />}
             </Button>
           )}
         </div>
 
         <Button
           type="submit"
+          size="icon"
           disabled={!inputValue.trim() || isProcessing}
-          className="h-12 px-5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white shrink-0 shadow-md transition-all disabled:opacity-50"
+          className="size-12 pointer-coarse:size-12"
+          aria-label="Send"
         >
           {isProcessing ? (
-            <Spinner className="w-5 h-5" />
+            <Spinner className="size-5" />
           ) : (
-            <Send className="w-5 h-5" />
+            <PaperPlaneRight weight="fill" className="size-5" />
           )}
         </Button>
       </form>

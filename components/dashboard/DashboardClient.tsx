@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar, BookOpen } from "lucide-react";
+import { Trash, CalendarBlank, BookOpen, Check } from "@phosphor-icons/react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   Select,
   SelectContent,
@@ -22,7 +23,8 @@ export default function DashboardClient({
   initialCourses: UserCourseWithChapters[];
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const reduceMotion = useReducedMotion();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Filters and Sort State
@@ -47,7 +49,7 @@ export default function DashboardClient({
   };
 
   // Apply Filters & Sorting
-  let displayedCourses = initialCourses.filter((course) => {
+  const displayedCourses = initialCourses.filter((course) => {
     const isCompleted =
       course.chapters.length > 0 &&
       course.chapters.every((c) => c.isCompleted);
@@ -71,27 +73,28 @@ export default function DashboardClient({
     return 0;
   });
 
+  const hasFilters = filterStatus !== "all" || filterDifficulty !== "all";
+
   return (
-    <div className="space-y-6">
-      {/* Sleek, subtle, right-aligned Filters Bar */}
-      <div className="flex flex-wrap items-center justify-end gap-3">
+    <section aria-label="Course list" className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:gap-3">
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9 text-xs bg-transparent">
+          <SelectTrigger aria-label="Filter by status" className="min-w-36 flex-1 sm:w-40 sm:flex-none">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="ongoing">Ongoing</SelectItem>
+            <SelectItem value="all">Any status</SelectItem>
+            <SelectItem value="ongoing">In progress</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
-          <SelectTrigger className="w-[140px] h-9 text-xs bg-transparent">
+          <SelectTrigger aria-label="Filter by difficulty" className="min-w-36 flex-1 sm:w-40 sm:flex-none">
             <SelectValue placeholder="Difficulty" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Difficulties</SelectItem>
+            <SelectItem value="all">Any difficulty</SelectItem>
             <SelectItem value="beginner">Beginner</SelectItem>
             <SelectItem value="intermediate">Intermediate</SelectItem>
             <SelectItem value="advanced">Advanced</SelectItem>
@@ -99,25 +102,39 @@ export default function DashboardClient({
         </Select>
 
         <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-[140px] h-9 text-xs bg-transparent">
-            <SelectValue placeholder="Sort By" />
+          <SelectTrigger aria-label="Sort courses" className="min-w-36 flex-1 sm:w-44 sm:flex-none">
+            <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="recent">Most Recent</SelectItem>
-            <SelectItem value="modules_high">Most Modules</SelectItem>
-            <SelectItem value="modules_low">Fewest Modules</SelectItem>
+            <SelectItem value="recent">Newest first</SelectItem>
+            <SelectItem value="modules_high">Most chapters</SelectItem>
+            <SelectItem value="modules_low">Fewest chapters</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Course Grid */}
       {displayedCourses.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground border border-dashed rounded-xl bg-card">
-          <p>No courses match your filters.</p>
+        <div className="rounded-xl border border-dashed border-foreground/25 px-6 py-12">
+          <p className="font-medium">No courses match these filters.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Try a different status or difficulty.
+          </p>
+          {hasFilters && (
+            <Button
+              variant="outline"
+              className="mt-5"
+              onClick={() => {
+                setFilterStatus("all");
+                setFilterDifficulty("all");
+              }}
+            >
+              Clear filters
+            </Button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayedCourses.map((course) => {
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {displayedCourses.map((course, index) => {
             const completedChapters = course.chapters.filter(
               (c) => c.isCompleted,
             ).length;
@@ -127,72 +144,90 @@ export default function DashboardClient({
                 ? Math.round((completedChapters / totalChapters) * 100)
                 : 0;
             const isDeleting = deletingId === course.id;
+            const isDone = totalChapters > 0 && completedChapters === totalChapters;
 
             return (
-              <div
+              <motion.li
                 key={course.id}
-                className="relative group p-6 border rounded-xl hover:border-primary hover:-translate-y-1 hover:shadow-lg transition-all duration-200 bg-card space-y-4 h-full flex flex-col justify-between"
+                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.25,
+                  ease: "easeOut",
+                  delay: reduceMotion ? 0 : Math.min(index, 8) * 0.04,
+                }}
+                className={`group relative flex h-full flex-col rounded-xl border border-border bg-card transition-colors duration-150 hover:border-foreground/35 focus-within:border-foreground/35 ${isDeleting ? "opacity-60" : ""}`}
               >
-                {/* Delete Button (Hidden until hover) */}
                 <Button
-                  variant="destructive"
+                  variant="ghost"
                   size="icon"
-                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label={`Delete course: ${course.topic}`}
+                  className="absolute top-2 right-2 z-10 size-11 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   onClick={(e) => {
                     e.preventDefault();
                     handleDelete(course.id);
                   }}
                   disabled={isDeleting}
                 >
-                  {isDeleting ? (
-                    <Spinner className="w-4 h-4" />
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
+                  {isDeleting ? <Spinner /> : <Trash />}
                 </Button>
 
                 <Link
                   href={`/courses/${course.id}`}
-                  className="block flex-1 space-y-4"
+                  className="flex flex-1 flex-col rounded-xl p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
-                  <div>
-                    <span className="text-xs font-semibold bg-secondary px-2 py-1 rounded-full capitalize">
-                      {course.difficulty}
+                  <p className="pr-10 font-mono text-xs capitalize text-muted-foreground">
+                    {course.difficulty}
+                  </p>
+                  <h2 className="mt-2 line-clamp-2 pr-6 text-lg leading-snug font-semibold capitalize text-balance">
+                    {course.topic}
+                  </h2>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <BookOpen className="size-4" aria-hidden />
+                      {totalChapters} {totalChapters === 1 ? "chapter" : "chapters"}
                     </span>
-                    <h2 className="text-xl font-semibold capitalize mt-3 line-clamp-2">
-                      {course.topic}
-                    </h2>
-                  </div>
-
-                  {/* Additional Course Details */}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <BookOpen className="w-4 h-4" /> {totalChapters} Modules
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />{" "}
+                    <span className="flex items-center gap-1.5">
+                      <CalendarBlank className="size-4" aria-hidden />
                       {new Date(course.createdAt).toLocaleDateString()}
-                    </div>
+                    </span>
                   </div>
 
-                  <div className="space-y-2 pt-2">
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Progress</span>
-                      <span>{progress}%</span>
+                  <div className="mt-auto space-y-2 pt-6">
+                    <div className="flex items-center justify-between font-mono text-xs text-muted-foreground">
+                      <span>
+                        {completedChapters}/{totalChapters} done
+                      </span>
+                      {isDone ? (
+                        <span className="flex items-center gap-1 text-foreground">
+                          <Check weight="bold" className="size-3.5 text-success" aria-hidden />
+                          Completed
+                        </span>
+                      ) : (
+                        <span className="tabular-nums">{progress}%</span>
+                      )}
                     </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
+                    <div
+                      className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/10"
+                      role="progressbar"
+                      aria-valuenow={progress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label="Course progress"
+                    >
                       <div
-                        className="bg-primary h-2 rounded-full transition-all"
+                        className={`h-full rounded-full ${isDone ? "bg-success" : "bg-primary"}`}
                         style={{ width: `${progress}%` }}
-                      ></div>
+                      />
                     </div>
                   </div>
                 </Link>
-              </div>
+              </motion.li>
             );
           })}
-        </div>
+        </ul>
       )}
-    </div>
+    </section>
   );
 }

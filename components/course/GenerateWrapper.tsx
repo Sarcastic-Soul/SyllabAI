@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { SubmitButton } from "@/components/shared/SubmitButton";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { WarningCircle, ArrowClockwise } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 interface GenerateWrapperProps {
-    action: () => Promise<any>;
+    action: () => Promise<{ error?: string } | void>;
     defaultText: string;
     loadingText: string;
     icon?: React.ReactNode;
@@ -27,13 +27,15 @@ export default function GenerateWrapper({
             if (res && res.error) {
                 setError(res.error);
             }
-        } catch (e: any) {
-            setError(e.message || "An error occurred during generation.");
+        } catch (e: unknown) {
+            setError(
+                (e instanceof Error && e.message) || "Generation failed. Try again.",
+            );
         }
     };
 
     return (
-        <div className="flex flex-col items-end gap-2 shrink-0">
+        <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end">
             <form action={handleAction}>
                 <SubmitButton
                     defaultText={defaultText}
@@ -42,17 +44,20 @@ export default function GenerateWrapper({
                 />
             </form>
             {error && (
-                <div className="flex items-center gap-3 p-3 mt-2 text-red-500 bg-red-500/10 rounded-lg border border-red-500/20 text-sm font-medium max-w-sm">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span className="break-words flex-1 leading-tight">{error}</span>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="border-red-500/50 text-red-500 hover:bg-red-500/20 hover:text-red-600 shrink-0 h-8 px-2"
+                <div
+                    role="alert"
+                    className="flex max-w-sm items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm"
+                >
+                    <WarningCircle className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
+                    <span className="min-w-0 flex-1 leading-snug break-words">{error}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
                         onClick={handleAction}
                         type="button"
                     >
-                        <RefreshCw className="w-3 h-3 mr-1.5" />
+                        <ArrowClockwise />
                         Retry
                     </Button>
                 </div>

@@ -1,9 +1,13 @@
+// Chunk size and overlap (in characters) for the chunks that get embedded for document search.
+export const RAG_CHUNK_SIZE = 1000;
+export const RAG_CHUNK_OVERLAP = 150;
+
 export function chunkText(text: string, maxChunkSize: number = 4000, overlap: number = 200): string[] {
   if (!text) return [];
 
   // Try to split by double newline (paragraphs)
-  let chunks = text.split('\n\n');
-  let result: string[] = [];
+  const chunks = text.split('\n\n');
+  const result: string[] = [];
   let currentChunk = '';
 
   for (const chunk of chunks) {

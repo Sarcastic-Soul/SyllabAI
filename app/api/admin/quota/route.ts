@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getDailyQuotaStatus } from "@/lib/quota";
 
 const ADMIN_EMAIL = "anishisbusy@gmail.com";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const { userId } = await auth();
     const user = await currentUser();
@@ -19,10 +19,10 @@ export async function GET(req: NextRequest) {
 
     const quota = await getDailyQuotaStatus();
     return NextResponse.json(quota);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching quota status:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch quota status" },
+      { error: (error instanceof Error && error.message) || "Failed to fetch quota status" },
       { status: 500 }
     );
   }

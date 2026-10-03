@@ -1,17 +1,15 @@
 "use server";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { db } from "@/lib/db";
-import { documentChunks, documents, studyBuddyMessages, courses } from "@/lib/db/schema";
-import { eq, sql, cosineDistance, desc, and, asc } from "drizzle-orm";
+import { studyBuddyMessages, courses } from "@/lib/db/schema";
+import { eq, desc, and, asc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import {
   askStudyBuddySchema,
   studyBuddyCourseQuerySchema,
 } from "@/lib/validations";
-import { withRetry } from "@/lib/utils/retry";
-import { checkRateLimit } from "@/lib/ratelimit";
-import { getEmbeddingVector, getSmartGenerativeModel } from "@/lib/quota";
+import { generate } from "@/lib/ai/generate";
+import { retrieveChunks } from "@/lib/retrieval";
 
 /**
  * Fetch full conversation history for a course with row-level ownership/access checks.
@@ -72,7 +70,7 @@ export async function clearConversationHistory(courseId: string) {
 }
 
 /**
- * Ask the Study Buddy a question with rate-limiting, withRetry, and Gemini Flash Lite optimization.
+ * Ask the Study Buddy a question with withRetry, and Gemini Flash Lite optimization.
  */
 export async function askStudyBuddy(
   question: string,
@@ -84,10 +82,6 @@ export async function askStudyBuddy(
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    const rateLimit = await checkRateLimit(userId);
-    if (!rateLimit.success) {
-      throw new Error("RATE_LIMIT_EXCEEDED: You have reached your hourly AI message limit.");
-    }
 
     const validated = askStudyBuddySchema.parse({
       question,
@@ -141,26 +135,18 @@ export async function askStudyBuddy(
     let ragContext = "";
     if (validated.courseId) {
       try {
-        const queryVector = await getEmbeddingVector(validated.question);
+        const similarChunks = await retrieveChunks({
+          courseId: validated.courseId,
+          query: validated.question,
+          limit: 3,
+          userId,
+        });
 
-        if (queryVector) {
-          const similarChunks = await db
-            .select({
-              content: documentChunks.content,
-              similarity: sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryVector)})`,
-            })
-            .from(documentChunks)
-            .innerJoin(documents, eq(documents.id, documentChunks.documentId))
-            .where(eq(documents.courseId, validated.courseId))
-            .orderBy((t) => desc(t.similarity))
-            .limit(3);
-
-          if (similarChunks.length > 0) {
-            ragContext =
-              "Relevant Course Document Context:\n" +
-              similarChunks.map((c) => c.content).join("\n---\n") +
-              "\n\n";
-          }
+        if (similarChunks.length > 0) {
+          ragContext =
+            "Relevant Course Document Context:\n" +
+            similarChunks.map((c) => c.content).join("\n---\n") +
+            "\n\n";
         }
       } catch (ragError) {
         console.warn("Study Buddy RAG search failed (proceeding without RAG context):", ragError);
@@ -177,17 +163,12 @@ ${validated.courseStructure}
 
 ${ragContext}${conversationContext}`;
 
-    const { model } = await getSmartGenerativeModel("gemini-3.5-flash-lite");
-
-    const response = await withRetry(() =>
-      model.generateContent({
-        contents: [
-          { role: "user", parts: [{ text: systemPrompt + "\nStudent Question: " + validated.question }] },
-        ],
-      })
-    );
-
-    const reply = response.response.text();
+    const { data: reply } = await generate({
+      step: "study_buddy",
+      prompt: systemPrompt + "\nStudent Question: " + validated.question,
+      preferredModel: "gemini-3.5-flash-lite",
+      userId,
+    });
 
     if (validated.courseId) {
       await db.insert(studyBuddyMessages).values({
@@ -199,8 +180,8 @@ ${ragContext}${conversationContext}`;
     }
 
     return { answer: reply };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in askStudyBuddy:", error);
-    throw new Error(error?.message || "Failed to get response from Study Buddy.");
+    throw new Error((error instanceof Error && error.message) || "Failed to get response from Study Buddy.");
   }
 }

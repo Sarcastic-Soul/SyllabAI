@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     remotePatterns: [{ hostname: "img.clerk.com" }],
@@ -10,15 +10,12 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["unpdf"],
   experimental: {
     optimizePackageImports: [
-      "lucide-react",
+      "@phosphor-icons/react",
       "@clerk/nextjs",
       "@icons-pack/react-simple-icons",
       "motion",
       "recharts",
     ],
-    serverActions: {
-      bodySizeLimit: "10mb", // Adjust this value as needed
-    },
   },
 };
 

@@ -1,0 +1,506 @@
+[
+  {
+    "id": "apollo-11-01",
+    "doc": "apollo-11",
+    "type": "keyword",
+    "question": "What was the serial number of the Saturn V that launched Apollo 11?",
+    "answer": "SA-506"
+  },
+  {
+    "id": "apollo-11-02",
+    "doc": "apollo-11",
+    "type": "keyword",
+    "question": "How tall was the Saturn V rocket in metres?",
+    "answer": "110.6 metres"
+  },
+  {
+    "id": "apollo-11-03",
+    "doc": "apollo-11",
+    "type": "keyword",
+    "question": "Which engines did the S-IC first stage use and what did they burn?",
+    "answer": "five F-1 engines"
+  },
+  {
+    "id": "apollo-11-04",
+    "doc": "apollo-11",
+    "type": "keyword",
+    "question": "What did program alarms 1202 and 1201 mean during the descent?",
+    "answer": "dropping low-priority tasks"
+  },
+  {
+    "id": "apollo-11-05",
+    "doc": "apollo-11",
+    "type": "keyword",
+    "question": "How many kilograms of rock and soil did Armstrong and Aldrin collect?",
+    "answer": "21.5 kilograms"
+  },
+  {
+    "id": "apollo-11-06",
+    "doc": "apollo-11",
+    "type": "keyword",
+    "question": "How many words of erasable memory and fixed memory did the Apollo Guidance Computer have?",
+    "answer": "36,864 words of fixed memory"
+  },
+  {
+    "id": "apollo-11-07",
+    "doc": "apollo-11",
+    "type": "keyword",
+    "question": "Which ship recovered the Apollo 11 crew after splashdown?",
+    "answer": "USS Hornet"
+  },
+  {
+    "id": "apollo-11-08",
+    "doc": "apollo-11",
+    "type": "keyword",
+    "question": "From which launch complex did Apollo 11 lift off?",
+    "answer": "Launch Complex 39A"
+  },
+  {
+    "id": "apollo-11-09",
+    "doc": "apollo-11",
+    "type": "keyword",
+    "question": "What new minerals were found in the Apollo 11 samples?",
+    "answer": "tranquillityite"
+  },
+  {
+    "id": "apollo-11-10",
+    "doc": "apollo-11",
+    "type": "paraphrase",
+    "question": "Who decided in the control room that the computer warnings were not a reason to call off the touchdown?",
+    "answer": "Steve Bales"
+  },
+  {
+    "id": "apollo-11-11",
+    "doc": "apollo-11",
+    "type": "paraphrase",
+    "question": "How close was the lander to running out of propellant when it touched down?",
+    "answer": "25 seconds of descent fuel"
+  },
+  {
+    "id": "apollo-11-12",
+    "doc": "apollo-11",
+    "type": "paraphrase",
+    "question": "How did the astronauts fix the broken switch they needed in order to take off from the lunar surface?",
+    "answer": "felt-tip pen"
+  },
+  {
+    "id": "apollo-11-13",
+    "doc": "apollo-11",
+    "type": "paraphrase",
+    "question": "How long were the astronauts kept isolated after they got back, in case they had brought back germs?",
+    "answer": "quarantine for 21 days"
+  },
+  {
+    "id": "apollo-11-14",
+    "doc": "apollo-11",
+    "type": "paraphrase",
+    "question": "Why was the computer's permanent storage described as rope?",
+    "answer": "woven into it"
+  },
+  {
+    "id": "apollo-11-15",
+    "doc": "apollo-11",
+    "type": "paraphrase",
+    "question": "Which instrument left on the surface still works today without any electricity?",
+    "answer": "retroreflector needs no power"
+  },
+  {
+    "id": "apollo-11-16",
+    "doc": "apollo-11",
+    "type": "paraphrase",
+    "question": "Who was in charge of the team that wrote the programs for the onboard computer?",
+    "answer": "Margaret Hamilton"
+  },
+  {
+    "id": "apollo-11-17",
+    "doc": "apollo-11",
+    "type": "paraphrase",
+    "question": "What did the second astronaut say when he saw the landscape?",
+    "answer": "magnificent desolation"
+  },
+  {
+    "id": "human-heart-01",
+    "doc": "human-heart",
+    "type": "keyword",
+    "question": "How much does an adult human heart weigh in grams?",
+    "answer": "250 and 350 grams"
+  },
+  {
+    "id": "human-heart-02",
+    "doc": "human-heart",
+    "type": "keyword",
+    "question": "What are the chordae tendineae attached to?",
+    "answer": "papillary muscles"
+  },
+  {
+    "id": "human-heart-03",
+    "doc": "human-heart",
+    "type": "keyword",
+    "question": "How many times per minute does the sinoatrial node fire?",
+    "answer": "between 60 and 100 times per minute"
+  },
+  {
+    "id": "human-heart-04",
+    "doc": "human-heart",
+    "type": "keyword",
+    "question": "What is a normal ejection fraction for the left ventricle?",
+    "answer": "between 55 and 70 percent"
+  },
+  {
+    "id": "human-heart-05",
+    "doc": "human-heart",
+    "type": "keyword",
+    "question": "Who performed the first human heart transplant, and at which hospital?",
+    "answer": "Groote Schuur Hospital"
+  },
+  {
+    "id": "human-heart-06",
+    "doc": "human-heart",
+    "type": "keyword",
+    "question": "What is the stroke volume of the left ventricle in millilitres?",
+    "answer": "70 millilitres"
+  },
+  {
+    "id": "human-heart-07",
+    "doc": "human-heart",
+    "type": "keyword",
+    "question": "What does the Frank-Starling law say?",
+    "answer": "the harder it contracts"
+  },
+  {
+    "id": "human-heart-08",
+    "doc": "human-heart",
+    "type": "keyword",
+    "question": "Which arteries does the left main coronary artery split into?",
+    "answer": "left anterior descending artery and the circumflex artery"
+  },
+  {
+    "id": "human-heart-09",
+    "doc": "human-heart",
+    "type": "keyword",
+    "question": "When did William Harvey publish De Motu Cordis?",
+    "answer": "1628"
+  },
+  {
+    "id": "human-heart-10",
+    "doc": "human-heart",
+    "type": "paraphrase",
+    "question": "Why is the muscle on one side of the lower heart so much thicker than on the other?",
+    "answer": "push blood through the whole body"
+  },
+  {
+    "id": "human-heart-11",
+    "doc": "human-heart",
+    "type": "paraphrase",
+    "question": "What causes the two sounds a doctor hears through a stethoscope?",
+    "answer": "comes from the valves closing"
+  },
+  {
+    "id": "human-heart-12",
+    "doc": "human-heart",
+    "type": "paraphrase",
+    "question": "Why is the signal briefly held up on its way from the upper chambers to the lower ones?",
+    "answer": "gives the ventricles time to fill"
+  },
+  {
+    "id": "human-heart-13",
+    "doc": "human-heart",
+    "type": "paraphrase",
+    "question": "How does an unborn child's blood get past the lungs?",
+    "answer": "foramen ovale is an opening"
+  },
+  {
+    "id": "human-heart-14",
+    "doc": "human-heart",
+    "type": "paraphrase",
+    "question": "Which scientist received a Nobel Prize for inventing the machine that records the heartbeat's electrical trace?",
+    "answer": "Willem Einthoven"
+  },
+  {
+    "id": "human-heart-15",
+    "doc": "human-heart",
+    "type": "paraphrase",
+    "question": "Who was the first person to thread a tube into his own heart?",
+    "answer": "Werner Forssmann"
+  },
+  {
+    "id": "human-heart-16",
+    "doc": "human-heart",
+    "type": "paraphrase",
+    "question": "What happened to the first person who received an implanted device to keep his heartbeat regular?",
+    "answer": "went through 26 pacemakers"
+  },
+  {
+    "id": "human-heart-17",
+    "doc": "human-heart",
+    "type": "paraphrase",
+    "question": "Which medicine made transplanted hearts last much longer by preventing rejection?",
+    "answer": "cyclosporine"
+  },
+  {
+    "id": "human-heart-18",
+    "doc": "human-heart",
+    "type": "paraphrase",
+    "question": "For how long did a machine do the work of the heart and lungs in the first successful operation of that kind?",
+    "answer": "26 minutes"
+  },
+  {
+    "id": "tcp-01",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "Which RFC replaced RFC 793 and when?",
+    "answer": "RFC 9293"
+  },
+  {
+    "id": "tcp-02",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "What is the IANA range for ephemeral ports?",
+    "answer": "49152 to 65535"
+  },
+  {
+    "id": "tcp-03",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "What is the minimum and maximum size of the TCP header in bytes?",
+    "answer": "at least 20 bytes long"
+  },
+  {
+    "id": "tcp-04",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "What is the default MSS for IPv4 if the option is not sent?",
+    "answer": "536 bytes"
+  },
+  {
+    "id": "tcp-05",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "Which RFC defines selective acknowledgment (SACK)?",
+    "answer": "RFC 2018"
+  },
+  {
+    "id": "tcp-06",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "What does RFC 6298 say about the minimum retransmission timeout?",
+    "answer": "should not be less than 1 second"
+  },
+  {
+    "id": "tcp-07",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "By how many bits can the window scale option shift the window?",
+    "answer": "up to 14 bits"
+  },
+  {
+    "id": "tcp-08",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "Since which Linux kernel version has CUBIC been the default?",
+    "answer": "2.6.19"
+  },
+  {
+    "id": "tcp-09",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "What did RFC 6928 change about the congestion window?",
+    "answer": "10 segments"
+  },
+  {
+    "id": "tcp-10",
+    "doc": "tcp",
+    "type": "keyword",
+    "question": "Who invented SYN cookies and in what year?",
+    "answer": "Daniel J. Bernstein"
+  },
+  {
+    "id": "tcp-11",
+    "doc": "tcp",
+    "type": "paraphrase",
+    "question": "How badly did data rates drop during the first network meltdown in the 1980s?",
+    "answer": "40 bits per second"
+  },
+  {
+    "id": "tcp-12",
+    "doc": "tcp",
+    "type": "paraphrase",
+    "question": "How can a returning client send data without waiting for the connection setup round trip?",
+    "answer": "TCP Fast Open"
+  },
+  {
+    "id": "tcp-13",
+    "doc": "tcp",
+    "type": "paraphrase",
+    "question": "Why does the side that hangs up first keep the connection around for a few minutes?",
+    "answer": "stray segments from the old connection die out"
+  },
+  {
+    "id": "tcp-14",
+    "doc": "tcp",
+    "type": "paraphrase",
+    "question": "What technique stops a sender from wasting capacity on lots of very small packets?",
+    "answer": "Nagle's algorithm"
+  },
+  {
+    "id": "tcp-15",
+    "doc": "tcp",
+    "type": "paraphrase",
+    "question": "How does a sender notice a lost packet quickly without waiting for a timer to run out?",
+    "answer": "three duplicate acknowledgments"
+  },
+  {
+    "id": "tcp-16",
+    "doc": "tcp",
+    "type": "paraphrase",
+    "question": "Why should round-trip time measurements ignore packets that were sent twice?",
+    "answer": "Karn's algorithm"
+  },
+  {
+    "id": "tcp-17",
+    "doc": "tcp",
+    "type": "paraphrase",
+    "question": "Which newer congestion algorithm models the path instead of reacting to dropped packets?",
+    "answer": "BBR, published by Google in 2016"
+  },
+  {
+    "id": "tcp-18",
+    "doc": "tcp",
+    "type": "paraphrase",
+    "question": "What problem makes data that already arrived wait for one missing piece?",
+    "answer": "head-of-line blocking"
+  },
+  {
+    "id": "tcp-19",
+    "doc": "tcp",
+    "type": "paraphrase",
+    "question": "How long does an unused connection stay silent before the system checks whether the other side is alive?",
+    "answer": "7200 seconds"
+  },
+  {
+    "id": "panama-canal-01",
+    "doc": "panama-canal",
+    "type": "keyword",
+    "question": "Who led the French attempt to build the Panama Canal in 1881?",
+    "answer": "Ferdinand de Lesseps"
+  },
+  {
+    "id": "panama-canal-02",
+    "doc": "panama-canal",
+    "type": "keyword",
+    "question": "What did the Hay-Bunau-Varilla Treaty give the United States and for how much money?",
+    "answer": "10 million dollars"
+  },
+  {
+    "id": "panama-canal-03",
+    "doc": "panama-canal",
+    "type": "keyword",
+    "question": "How high above sea level is Gatun Lake?",
+    "answer": "26 metres above sea level"
+  },
+  {
+    "id": "panama-canal-04",
+    "doc": "panama-canal",
+    "type": "keyword",
+    "question": "What are the dimensions of each original lock chamber?",
+    "answer": "110 feet wide and 1,000 feet long"
+  },
+  {
+    "id": "panama-canal-05",
+    "doc": "panama-canal",
+    "type": "keyword",
+    "question": "Which ship made the first official passage on August 15, 1914?",
+    "answer": "SS Ancon"
+  },
+  {
+    "id": "panama-canal-06",
+    "doc": "panama-canal",
+    "type": "keyword",
+    "question": "What are the maximum dimensions of a Panamax ship?",
+    "answer": "294.1 metres long"
+  },
+  {
+    "id": "panama-canal-07",
+    "doc": "panama-canal",
+    "type": "keyword",
+    "question": "What are the names of the new locks opened in 2016?",
+    "answer": "Agua Clara"
+  },
+  {
+    "id": "panama-canal-08",
+    "doc": "panama-canal",
+    "type": "keyword",
+    "question": "When did Panama take full control of the canal under the Torrijos-Carter Treaties?",
+    "answer": "December 31, 1999"
+  },
+  {
+    "id": "panama-canal-09",
+    "doc": "panama-canal",
+    "type": "keyword",
+    "question": "How much did the canal expansion cost?",
+    "answer": "5.25 billion dollars"
+  },
+  {
+    "id": "panama-canal-10",
+    "doc": "panama-canal",
+    "type": "paraphrase",
+    "question": "How did the health officer get rid of the fever that was killing workers?",
+    "answer": "drained swamps"
+  },
+  {
+    "id": "panama-canal-11",
+    "doc": "panama-canal",
+    "type": "paraphrase",
+    "question": "Who persuaded the president to drop the idea of digging at ocean level and use steps of water instead?",
+    "answer": "John Frank Stevens"
+  },
+  {
+    "id": "panama-canal-12",
+    "doc": "panama-canal",
+    "type": "paraphrase",
+    "question": "What pulls vessels through the old chambers?",
+    "answer": "electric locomotives"
+  },
+  {
+    "id": "panama-canal-13",
+    "doc": "panama-canal",
+    "type": "paraphrase",
+    "question": "What was the smallest fee anyone ever paid to go through, and who paid it?",
+    "answer": "Richard Halliburton"
+  },
+  {
+    "id": "panama-canal-14",
+    "doc": "panama-canal",
+    "type": "paraphrase",
+    "question": "Why did so few newspapers report on the day the waterway first opened?",
+    "answer": "First World War had begun"
+  },
+  {
+    "id": "panama-canal-15",
+    "doc": "panama-canal",
+    "type": "paraphrase",
+    "question": "Which famous tower builder was found guilty in the scandal after the first company went bankrupt?",
+    "answer": "Gustave Eiffel"
+  },
+  {
+    "id": "panama-canal-16",
+    "doc": "panama-canal",
+    "type": "paraphrase",
+    "question": "How do the newer chambers avoid wasting so much fresh water?",
+    "answer": "water-saving basins"
+  },
+  {
+    "id": "panama-canal-17",
+    "doc": "panama-canal",
+    "type": "paraphrase",
+    "question": "Which stretch of digging kept collapsing and was later named after the man who ran it?",
+    "answer": "Gaillard Cut"
+  },
+  {
+    "id": "panama-canal-18",
+    "doc": "panama-canal",
+    "type": "paraphrase",
+    "question": "How many labourers lost their lives while the Americans were building it?",
+    "answer": "5,600 workers died"
+  }
+]

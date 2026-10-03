@@ -1,14 +1,21 @@
 import { db } from "@/lib/db";
-import { courses, chapters } from "@/lib/db/schema";
+import { courses } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import PrintTrigger from "@/components/course/PrintTrigger";
 import MermaidDiagram from "@/components/course/MermaidDiagram";
+
+// react-markdown passes the AST node as a prop. It must not reach the DOM.
+function withoutNode<T extends ExtraProps>(props: T): Omit<T, "node"> {
+    const rest = { ...props };
+    delete rest.node;
+    return rest;
+}
 
 interface PrintPageProps {
     params: Promise<{
@@ -31,18 +38,18 @@ const PrintCoursePage = async ({ params }: PrintPageProps) => {
     if (!course) notFound();
 
     return (
-        <div className="max-w-4xl mx-auto p-8 bg-white text-black min-h-screen">
+        <div className="mx-auto min-h-screen max-w-4xl bg-background p-8 text-foreground print:max-w-none print:p-0">
             <PrintTrigger />
-            <div className="mb-12 border-b pb-8 text-center">
-                <h1 className="text-5xl font-extrabold mb-4 capitalize">
+            <div className="mb-12 border-b border-foreground/30 pb-8">
+                <h1 className="mb-4 text-4xl font-bold capitalize text-balance sm:text-5xl">
                     {course.topic}
                 </h1>
-                <p className="text-gray-600 text-xl">
+                <p className="text-lg text-muted-foreground print:text-foreground">
                     Difficulty:{" "}
                     <span className="capitalize font-semibold">
                         {course.difficulty}
                     </span>{" "}
-                    | Modules:{" "}
+                    / Chapters:{" "}
                     <span className="font-semibold">
                         {course.chapters.length}
                     </span>
@@ -52,10 +59,10 @@ const PrintCoursePage = async ({ params }: PrintPageProps) => {
             <div className="space-y-16">
                 {course.chapters.map((chapter) => (
                     <div key={chapter.id} className="break-inside-avoid">
-                        <h2 className="text-3xl font-bold border-b pb-4 mb-6">
+                        <h2 className="mb-6 border-b border-foreground/30 pb-4 text-3xl font-bold">
                             Chapter {chapter.order}: {chapter.title}
                         </h2>
-                        <div className="prose prose-slate prose-lg max-w-none text-black">
+                        <div className="prose prose-lg max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-code:font-mono prose-pre:border prose-pre:border-border prose-pre:bg-muted prose-pre:font-mono prose-pre:text-foreground">
                             {chapter.lessonText &&
                             chapter.lessonText !== "GENERATING" ? (
                                 <ReactMarkdown
@@ -63,12 +70,11 @@ const PrintCoursePage = async ({ params }: PrintPageProps) => {
                                     rehypePlugins={[rehypeKatex]}
                                     components={{
                                         code({
-                                            node,
-                                            inline,
                                             className,
                                             children,
-                                            ...props
-                                        }: any) {
+                                            ...rest
+                                        }) {
+                                            const props = withoutNode(rest);
                                             const match = /language-(\w+)/.exec(
                                                 className || "",
                                             );
@@ -78,7 +84,6 @@ const PrintCoursePage = async ({ params }: PrintPageProps) => {
 
                                             // Intercept Mermaid blocks
                                             if (
-                                                !inline &&
                                                 match &&
                                                 match[1] === "mermaid"
                                             ) {
@@ -104,7 +109,7 @@ const PrintCoursePage = async ({ params }: PrintPageProps) => {
                                     {chapter.lessonText}
                                 </ReactMarkdown>
                             ) : (
-                                <p className="italic text-gray-500">
+                                <p className="italic text-muted-foreground">
                                     This chapter has not been generated yet.
                                 </p>
                             )}

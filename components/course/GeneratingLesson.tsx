@@ -21,17 +21,17 @@ export default function GeneratingLesson() {
   }, [router]);
 
   return (
-    <div className="py-12 flex flex-col items-center justify-center space-y-4 border rounded-2xl bg-muted/30">
-      <Spinner className="w-8 h-8" />
-      <h2 className="text-2xl font-semibold animate-pulse">
-        Generating Lesson...
-      </h2>
-      <p className="text-muted-foreground text-center max-w-md">
-        Please wait while our AI builds a comprehensive curriculum for this
-        chapter. This may take a few moments.
-      </p>
-      <p className="text-xs text-muted-foreground">
-        This page will update automatically.
+    <div
+      role="status"
+      className="rounded-xl border border-dashed border-foreground/25 px-6 py-10"
+    >
+      <div className="flex items-center gap-3">
+        <Spinner className="size-5 text-primary motion-reduce:animate-none" />
+        <h2 className="text-xl font-semibold">Writing this lesson</h2>
+      </div>
+      <p className="mt-2 max-w-[55ch] leading-relaxed text-muted-foreground">
+        This usually takes under a minute. The page updates by itself, so you
+        can leave it open.
       </p>
     </div>
   );

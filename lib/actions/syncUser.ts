@@ -107,7 +107,7 @@ export const syncUserToDatabase = async () => {
     } catch {
       // Cookies cannot be modified during SSR page renders in Next.js App Router
     }
-  } catch (error: any) {
-    console.error("Error syncing user to database:", error.message);
+  } catch (error) {
+    console.error("Error syncing user to database:", error instanceof Error ? error.message : error);
   }
 };

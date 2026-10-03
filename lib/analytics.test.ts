@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 
 describe("Telemetry Analytics Module", () => {
   it("should structure telemetry payload cleanly", () => {

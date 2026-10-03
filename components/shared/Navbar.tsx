@@ -13,47 +13,51 @@ const Navbar = async () => {
   const isPro = userId ? has({ plan: "pro" }) : false;
 
   return (
-    <nav className="navbar flex justify-between items-center p-4 border-b">
-      <Link href="/">
-        <div className="flex items-center gap-2.5 cursor-pointer">
+    <nav
+      aria-label="Main"
+      className="relative z-40 border-b border-border bg-card print:hidden"
+    >
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Link
+          href="/"
+          aria-label="SyllabAI home"
+          className="flex shrink-0 items-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+        >
           <Image
             src="/logo.svg"
-            alt="logo"
+            alt="SyllabAI"
             width={80}
             height={50}
             style={{ width: "auto" }}
             priority
           />
-        </div>
-      </Link>
+        </Link>
 
-      <div className="flex items-center gap-4 md:gap-8">
-        {/* Hide inline NavItems on small screens */}
-        <div className="hidden md:block">
-          <NavItems />
-        </div>
+        <div className="flex items-center gap-3 md:gap-6">
+          {/* Inline links on desktop, MobileMenu below md */}
+          <div className="hidden md:block">
+            <NavItems />
+          </div>
 
-        <Show when="signed-in">
-          <div className="flex items-center gap-4">
-            {/* Plan Badge */}
-            <Link href="/subscription" className="hidden sm:block">
-              <span
-                className={`px-3 py-1 text-xs font-semibold rounded-full border cursor-pointer hover:opacity-80 transition-opacity ${
+          <Show when="signed-in">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/subscription"
+                className={`hidden h-7 items-center rounded-sm border px-2 font-mono text-xs transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:inline-flex ${
                   isPro
-                    ? "bg-primary/10 text-primary border-primary/20"
-                    : "bg-muted text-muted-foreground border-border"
+                    ? "border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15"
+                    : "border-border bg-muted text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {isPro ? "Pro Plan" : "Basic Plan"}
-              </span>
-            </Link>
+                {isPro ? "Pro plan" : "Basic plan"}
+              </Link>
 
-            <UserButton />
-            
-            {/* Mobile hamburger menu */}
-            <MobileMenu />
-          </div>
-        </Show>
+              <UserButton />
+
+              <MobileMenu />
+            </div>
+          </Show>
+        </div>
       </div>
     </nav>
   );

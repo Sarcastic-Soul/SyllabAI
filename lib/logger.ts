@@ -10,15 +10,15 @@ export const logger = pino({
   timestamp: pino.stdTimeFunctions.isoTime,
 });
 
-export function logInfo(message: string, context?: Record<string, any>) {
+export function logInfo(message: string, context?: Record<string, unknown>) {
   logger.info(context || {}, message);
 }
 
-export function logWarn(message: string, context?: Record<string, any>) {
+export function logWarn(message: string, context?: Record<string, unknown>) {
   logger.warn(context || {}, message);
 }
 
-export function logError(message: string, error?: any, context?: Record<string, any>) {
+export function logError(message: string, error?: unknown, context?: Record<string, unknown>) {
   const errPayload = error instanceof Error
     ? { errorMessage: error.message, stack: error.stack }
     : { errorMessage: String(error) };

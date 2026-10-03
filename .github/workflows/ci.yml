@@ -17,7 +17,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 12
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -26,10 +26,16 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
 
       - name: Run Vitest Unit Tests
-        run: mv postcss.config.mjs postcss.config.mjs.bak && pnpm exec vitest run; mv postcss.config.mjs.bak postcss.config.mjs
+        run: pnpm exec vitest run
 
       - name: Build Next.js project
         env:
