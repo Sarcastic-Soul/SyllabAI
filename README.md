@@ -16,6 +16,7 @@ Type what you want to learn, or upload your notes. SyllabAI lays out the chapter
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06b6d4?logo=tailwindcss&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/Neon_Postgres-pgvector-4169e1?logo=postgresql&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google_Gemini-3.8_Flash-8e75b2?logo=googlegemini&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [Live site](https://syllabai-edu.vercel.app) · [Features](#features) · [How it works](#how-it-works) · [Run it locally](#run-it-locally)
 
@@ -218,6 +219,6 @@ EVAL_DATABASE_URL=postgres://... pnpm eval
 
 <div align="center">
 
-A student portfolio project by [Sarcastic-Soul](https://github.com/Sarcastic-Soul).
+A student portfolio project by [Sarcastic-Soul](https://github.com/Sarcastic-Soul). Released under the [MIT License](LICENSE).
 
 </div>
