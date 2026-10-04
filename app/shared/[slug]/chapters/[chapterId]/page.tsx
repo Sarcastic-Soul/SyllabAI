@@ -38,7 +38,7 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
                         aria-label="SyllabAI home"
                         className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                     >
-                        <Image src="/logo.svg" alt="SyllabAI" width={80} height={50} style={{ width: "auto" }} />
+                        <Image src="/logo.svg" alt="SyllabAI" width={40} height={40} className="size-10" />
                     </Link>
                     <Button asChild variant="outline" size="sm">
                         <Link href="/auth/sign-up">Sign up free</Link>

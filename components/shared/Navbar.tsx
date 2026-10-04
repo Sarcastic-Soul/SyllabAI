@@ -26,9 +26,9 @@ const Navbar = async () => {
           <Image
             src="/logo.svg"
             alt="SyllabAI"
-            width={80}
-            height={50}
-            style={{ width: "auto" }}
+            width={40}
+            height={40}
+            className="size-10"
             priority
           />
         </Link>

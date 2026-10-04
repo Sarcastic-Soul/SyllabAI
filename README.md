@@ -62,8 +62,14 @@ Type what you want to learn, or upload your notes. SyllabAI lays out the chapter
 
 ## Screenshots
 
-| Sign up | Pricing |
+| Dashboard | Course |
 | :---: | :---: |
+| ![Dashboard with stats and course list](docs/screenshots/dashboard.png) | ![Course page with chapter list](docs/screenshots/course.png) |
+| **Lesson** | **Quiz** |
+| ![Generated lesson](docs/screenshots/lesson.png) | ![Chapter quiz with a checked answer](docs/screenshots/quiz.png) |
+| **Diagram and flashcards** | **Study buddy** |
+| ![Chapter diagram and flashcards](docs/screenshots/flashcards.png) | ![Study buddy answering from uploaded notes](docs/screenshots/study-buddy.png) |
+| **Sign up** | **Pricing** |
 | ![Sign-up page](docs/screenshots/sign-up.png) | ![Pricing section](docs/screenshots/pricing.png) |
 
 ## How it works
