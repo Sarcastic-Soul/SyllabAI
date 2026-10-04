@@ -44,8 +44,8 @@ Working list for the polish and hardening pass (branch `polish-and-hardening`).
 - [x] Primary model moved to `gemini-3.8-flash` (fallback stays `gemini-3.5-flash-lite`)
 
 ## Left open
-- [ ] Look at the signed-in screens in a browser (needs a Clerk login) and run the `impeccable` audit on them
+- [ ] Look at the signed-in screens in a browser (needs a login) and run the `impeccable` audit on them
 - [ ] Fill in prices in `lib/ai/pricing.ts` if cost in dollars is wanted on the admin page (tokens are shown now)
-- [ ] Plan text ("Generate Upto 2 Courses") lives in the Clerk dashboard, fix the wording there
+- [ ] Pro price and length live in `lib/billing/config.ts` (now ₹199 for 30 days); Razorpay is in test mode
 - [ ] TypeScript 7: wait until `typescript-eslint` supports it (pinned to 6.0.3 for now)
 - [ ] Two lint warnings: `<img>` in `app/profile/page.tsx`, `useMemo` deps in `components/dashboard/DashboardStats.tsx`

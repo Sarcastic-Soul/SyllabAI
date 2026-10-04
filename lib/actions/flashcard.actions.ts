@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { flashcards, chapters } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth/session";
 import { calculateSM2 } from "@/lib/utils/sm2";
 import { flashcardReviewSchema, flashcardQuerySchema } from "@/lib/validations";
 import { trackEvent } from "@/lib/analytics";
@@ -12,7 +12,7 @@ import { trackEvent } from "@/lib/analytics";
  * Fetch flashcards that are due for review (nextReviewAt <= now), with ownership verification.
  */
 export async function getFlashcardsDueForReview(chapterId: string) {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
     const validated = flashcardQuerySchema.parse({ chapterId });
@@ -41,7 +41,7 @@ export async function getFlashcardsDueForReview(chapterId: string) {
  * Get all flashcards for a chapter, with user ownership verification.
  */
 export async function getAllFlashcards(chapterId: string) {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
     const validated = flashcardQuerySchema.parse({ chapterId });
@@ -70,7 +70,7 @@ export async function reviewFlashcard(
     flashcardId: string,
     quality: 0 | 1 | 2 | 3,
 ) {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
     const validated = flashcardReviewSchema.parse({ flashcardId, quality });

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider, Show } from "@clerk/nextjs";
 import "./globals.css";
 import Navbar from "@/components/shared/Navbar";
 import ConditionalNavbar from "@/components/shared/ConditionalNavbar";
+import Providers from "./providers";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -43,15 +43,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body className={`${bricolage.variable} ${geist.variable} ${geistMono.variable} antialiased`}>
-        <ClerkProvider appearance={{ variables: { colorPrimary: "#e8471f" } }}>
-          <Show when="signed-in">
-            {/* 2. Wrapped Navbar */}
-            <ConditionalNavbar>
-              <Navbar />
-            </ConditionalNavbar>
-          </Show>
+        <Providers>
+          {/* Navbar renders nothing when signed out */}
+          <ConditionalNavbar>
+            <Navbar />
+          </ConditionalNavbar>
           {children}
-        </ClerkProvider>
+        </Providers>
       </body>
     </html>
   );

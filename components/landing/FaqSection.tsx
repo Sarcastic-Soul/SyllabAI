@@ -4,7 +4,7 @@ import { container, focusRing } from "./styles";
 const faqs = [
   {
     q: "Is it free?",
-    a: "Yes. The Basic plan is free and holds 2 courses at a time. Lessons, quizzes, flashcards and the study buddy are all included. Pro removes the course limit.",
+    a: "Yes. The Basic plan is free and holds 3 courses at a time. Lessons, quizzes, flashcards and the study buddy are all included. Pro removes the course limit.",
   },
   {
     q: "What can I upload?",

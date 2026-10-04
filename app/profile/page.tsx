@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { courses } from "@/lib/db/schema";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getSessionUser } from "@/lib/auth/session";
 import { eq, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -9,15 +9,17 @@ import { ArrowRight, BookmarkSimple } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/ui/button";
 
 const ProfilePage = async () => {
-  const { userId } = await auth();
+  const user = await getSessionUser();
 
-  if (!userId) {
-    redirect("/sign-in");
+  if (!user) {
+    redirect("/auth/sign-in");
   }
 
+  const userId = user.id;
+  const firstName = user.name?.trim().split(/\s+/)[0];
+
   // Run all independent data fetches in parallel
-  const [user, userDb, userCourses] = await Promise.all([
-    currentUser(),
+  const [userDb, userCourses] = await Promise.all([
     db.query.users.findFirst({
       where: eq(users.id, userId),
     }),
@@ -33,10 +35,6 @@ const ProfilePage = async () => {
       },
     }),
   ]);
-
-  if (!user) {
-    redirect("/sign-in");
-  }
 
   const currentStreak = userDb?.currentStreak || 0;
 
@@ -127,17 +125,27 @@ const ProfilePage = async () => {
   return (
     <main className="mx-auto w-full max-w-6xl space-y-12 px-4 pt-8 pb-16 sm:px-6 sm:pt-10">
       <header className="flex items-center gap-4 sm:gap-5">
-        <img
-          src={user.imageUrl}
-          alt=""
-          className="size-14 shrink-0 rounded-full border border-border object-cover sm:size-16"
-        />
+        {user.image ? (
+          <img
+            src={user.image}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="size-14 shrink-0 rounded-full border border-border object-cover sm:size-16"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="flex size-14 shrink-0 items-center justify-center rounded-full border border-border bg-secondary font-display text-2xl font-bold uppercase sm:size-16"
+          >
+            {(firstName || user.email).charAt(0)}
+          </div>
+        )}
         <div className="min-w-0">
           <h1 className="text-3xl font-bold text-balance sm:text-4xl">
-            {user.firstName ? `${user.firstName}'s progress` : "Your progress"}
+            {firstName ? `${firstName}'s progress` : "Your progress"}
           </h1>
           <p className="mt-1 truncate text-sm text-muted-foreground">
-            {user.emailAddresses[0].emailAddress}
+            {user.email}
           </p>
         </div>
       </header>

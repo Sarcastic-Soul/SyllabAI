@@ -1,16 +1,16 @@
 "use server";
 
-import { currentUser } from "@clerk/nextjs/server";
+import { getSessionUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { users, courses, chapters, quizzes, flashcards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export const syncUserToDatabase = async () => {
-  const user = await currentUser();
+  const user = await getSessionUser();
 
   if (!user) return;
 
-  const email = user.emailAddresses?.[0]?.emailAddress;
+  const email = user.email;
   const id = user.id;
 
   try {
@@ -103,7 +103,7 @@ export const syncUserToDatabase = async () => {
     try {
       const { cookies } = await import("next/headers");
       const cookieStore = await cookies();
-      cookieStore.set("user_synced", "true", { maxAge: 60 * 60 * 24 * 7 }); // 1 week
+      cookieStore.set("user_synced", id, { maxAge: 60 * 60 * 24 * 7 }); // 1 week
     } catch {
       // Cookies cannot be modified during SSR page renders in Next.js App Router
     }

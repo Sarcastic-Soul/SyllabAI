@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { quizzes, questions, courses } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth/session";
 import { generateQuizSchema, submitQuizScoreSchema } from "@/lib/validations";
 import { calculateCourseMastery } from "@/lib/adaptive";
 import { generate } from "@/lib/ai/generate";
@@ -18,7 +18,7 @@ export async function generateChapterQuiz(
   courseId: string,
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
 
@@ -108,7 +108,7 @@ export async function submitQuizScore(
   chapterId: string,
   courseId: string,
 ) {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) throw new Error("Unauthorized");
 
   const validated = submitQuizScoreSchema.parse({ quizId, score, chapterId, courseId });

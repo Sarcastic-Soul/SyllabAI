@@ -58,19 +58,9 @@ export default function AuthShell({
         </p>
       </div>
 
-      <div className="flex items-start justify-center px-5 py-10 sm:px-10 lg:items-center [&_.cl-cardBox]:border [&_.cl-cardBox]:border-solid [&_.cl-cardBox]:border-foreground/15 [&_.cl-cardBox]:shadow-none!">
+      <div className="flex items-start justify-center px-5 py-10 sm:px-10 lg:items-center">
         {children}
       </div>
     </main>
   );
 }
-
-/** Clerk appearance shared by both forms, mapped to the app's tokens. */
-export const authAppearance = {
-  variables: {
-    colorPrimary: "#e8471f",
-    borderRadius: "0.5rem",
-    fontFamily: "var(--font-geist), ui-sans-serif, sans-serif",
-    fontSize: "16px",
-  },
-};

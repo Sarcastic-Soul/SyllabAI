@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
-import { Show, SignUpButton } from "@clerk/nextjs";
+import { SignedOut } from "@neondatabase/auth-ui";
 import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 import MermaidDiagram from "@/components/course/MermaidDiagram";
 
@@ -29,7 +29,7 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
 
     return (
         <main className="mx-auto w-full max-w-[43rem] px-4 pt-6 pb-20 sm:px-6 sm:pt-8">
-            <Show when="signed-out">
+            <SignedOut>
                 <div className="mb-8 flex items-center justify-between gap-4 border-b border-border pb-4">
                     <Link
                         href="/"
@@ -38,13 +38,11 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
                     >
                         <Image src="/logo.svg" alt="SyllabAI" width={80} height={50} style={{ width: "auto" }} />
                     </Link>
-                    <SignUpButton>
-                        <Button variant="outline" size="sm">
-                            Sign up free
-                        </Button>
-                    </SignUpButton>
+                    <Button asChild variant="outline" size="sm">
+                        <Link href="/auth/sign-up">Sign up free</Link>
+                    </Button>
                 </div>
-            </Show>
+            </SignedOut>
 
             <Link
                 href={`/shared/${slug}`}
@@ -94,7 +92,7 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
             )}
 
             {/* Sign-up prompt stands in for the quiz and flashcards */}
-            <Show when="signed-out">
+            <SignedOut>
                 <section className="mt-12 border-t border-border pt-8">
                     <h2 className="text-xl font-semibold">
                         Test yourself on this chapter
@@ -103,13 +101,11 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
                         Sign up to take the quiz, review flashcards on a spaced
                         schedule and ask the study buddy questions.
                     </p>
-                    <SignUpButton>
-                        <Button size="lg" className="mt-5">
-                            Sign up free
-                        </Button>
-                    </SignUpButton>
+                    <Button asChild size="lg" className="mt-5">
+                        <Link href="/auth/sign-up">Sign up free</Link>
+                    </Button>
                 </section>
-            </Show>
+            </SignedOut>
         </main>
     );
 };

@@ -76,7 +76,8 @@ All Gemini text and JSON calls go through one helper, `lib/ai/generate.ts`. Docu
 - **AI & RAG**: Google Gemini via `@google/genai` (`gemini-3.8-flash`, `gemini-3.5-flash-lite`, `gemini-embedding-001`), Zod for output checks, `unpdf` for PDF text
 - **Database**: PostgreSQL (Neon), `pgvector` (HNSW index), full-text search (`tsvector` + GIN index), Drizzle ORM
 - **Analytics & Logging**: Pino (Structured JSON logging), Recharts (Interactive charts)
-- **Authentication**: Clerk Auth
+- **Authentication**: Neon Auth (Managed Better Auth), Google and email/password
+- **Payments**: Razorpay (one-time Pro pass, signature check plus webhook)
 
 ---
 
@@ -99,7 +100,8 @@ Copy `.env.example` to `.env.local` and fill in your credentials:
 cp .env.example .env.local
 ```
 Ensure your `.env.local` contains:
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` & `CLERK_SECRET_KEY`
+- `NEON_AUTH_BASE_URL` & `NEON_AUTH_COOKIE_SECRET` (Neon console, Auth tab)
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` & `RAZORPAY_WEBHOOK_SECRET`
 - `DATABASE_URL` (Neon PostgreSQL connection string)
 - `GEMINI_API_KEY` (Google Gemini API key)
 

@@ -20,9 +20,11 @@ const tsvector = customType<{ data: string }>({
 });
 
 export const users = pgTable("users", {
-    id: text("id").primaryKey(), // Clerk ID
+    id: text("id").primaryKey(), // Neon Auth user ID
     email: text("email"),
     subscriptionPlan: text("subscription_plan").default("basic").notNull(),
+    // Pro runs until this time; set when a Razorpay payment goes through
+    proUntil: timestamp("pro_until"),
     coursesGenerated: integer("courses_generated").default(0).notNull(),
     currentStreak: integer("current_streak").default(0).notNull(),
     activityMap: jsonb("activity_map").default({}).notNull(),
@@ -31,10 +33,29 @@ export const users = pgTable("users", {
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// One row per Razorpay order. status: created, paid or failed
+export const payments = pgTable(
+    "payments",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        orderId: text("order_id").notNull().unique(),
+        paymentId: text("payment_id"),
+        amount: integer("amount").notNull(), // in paise
+        currency: text("currency").default("INR").notNull(),
+        status: text("status").default("created").notNull(),
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+        paidAt: timestamp("paid_at"),
+    },
+    (table) => [index("payments_user_idx").on(table.userId)],
+);
+
 // 1. Replaces 'companions' - The main course entity
 export const courses = pgTable("courses", {
     id: uuid("id").defaultRandom().primaryKey(),
-    author: text("author").notNull(), // Clerk User ID
+    author: text("author").notNull(), // Neon Auth user ID
     topic: text("topic").notNull(), // The main subject they searched for
     duration: integer("duration").notNull(), // e.g., in weeks or hours
     difficulty: text("difficulty").notNull(), // beginner, intermediate, advanced

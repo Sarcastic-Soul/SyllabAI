@@ -2,14 +2,14 @@
 
 import { db } from "@/lib/db";
 import { courses, users } from "@/lib/db/schema";
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { generate } from "@/lib/ai/generate";
 
 export async function deleteCourse(courseId: string) {
   try {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
     const course = await db.query.courses.findFirst({
@@ -41,7 +41,7 @@ export async function deleteCourse(courseId: string) {
 
 export async function generateCourseCheatSheet(courseId: string) {
   try {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
 
@@ -105,7 +105,7 @@ export async function generateCourseCheatSheet(courseId: string) {
 
 export async function toggleCoursePublic(courseId: string) {
   try {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
     const course = await db.query.courses.findFirst({

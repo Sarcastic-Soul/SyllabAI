@@ -1,24 +1,31 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { auth } from "@/lib/auth/server";
 
-const publicRoutes = ["/", "/sign-in", "/sign-up", "/shared", "/sw.js"];
+const publicRoutes = [
+    "/",
+    "/auth",
+    "/shared",
+    "/sw.js",
+    "/api/auth",
+    "/api/health",
+    // Razorpay calls this without a session; the route checks the signature itself
+    "/api/razorpay/webhook",
+];
 
 const isPublicRoute = (pathname: string) =>
     publicRoutes.some(
         (route) => pathname === route || pathname.startsWith(route + "/")
     );
 
-const middleware = clerkMiddleware(async (auth, req) => {
-    const { pathname } = req.nextUrl;
+const protectRoute = auth.middleware({ loginUrl: "/auth/sign-in" });
 
-    if (!isPublicRoute(pathname)) {
-        await auth.protect();
+export default function proxy(request: NextRequest) {
+    if (isPublicRoute(request.nextUrl.pathname)) {
+        return NextResponse.next();
     }
 
-    return NextResponse.next();
-});
-
-export default middleware;
+    return protectRoute(request);
+}
 
 export const config = {
     matcher: [

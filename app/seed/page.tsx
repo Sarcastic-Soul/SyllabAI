@@ -1,14 +1,14 @@
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { seedMockData } from "@/lib/actions/seed.actions";
 import { Warning } from "@phosphor-icons/react/dist/ssr";
 
 export default async function SeedPage() {
-  const { userId } = await auth();
+  const userId = await getUserId();
 
   if (!userId) {
-    redirect("/sign-in");
+    redirect("/auth/sign-in");
   }
 
   return (

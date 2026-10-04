@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth/session";
 import { cookies } from "next/headers";
 import { getUserCourses, getUserDb } from "@/lib/queries";
 import Link from "next/link";
@@ -9,14 +9,14 @@ import DashboardStats from "@/components/dashboard/DashboardStats";
 import { syncUserToDatabase } from "@/lib/actions/syncUser";
 
 const Dashboard = async () => {
-    const { userId } = await auth();
+    const userId = await getUserId();
 
     if (!userId) {
         return (
             <main className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
                 <p className="text-muted-foreground">
                     Sign in to see your courses.{" "}
-                    <Link href="/sign-in" className="font-medium text-foreground underline underline-offset-4">
+                    <Link href="/auth/sign-in" className="font-medium text-foreground underline underline-offset-4">
                         Sign in
                     </Link>
                 </p>
@@ -25,9 +25,9 @@ const Dashboard = async () => {
     }
 
     const cookieStore = await cookies();
-    const hasSynced = cookieStore.get("user_synced");
+    const syncedFor = cookieStore.get("user_synced")?.value;
 
-    if (!hasSynced) {
+    if (syncedFor !== userId) {
         await syncUserToDatabase();
     }
 

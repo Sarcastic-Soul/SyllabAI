@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { studyBuddyMessages, courses } from "@/lib/db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth/session";
 import {
   askStudyBuddySchema,
   studyBuddyCourseQuerySchema,
@@ -15,7 +15,7 @@ import { retrieveChunks } from "@/lib/retrieval";
  * Fetch full conversation history for a course with row-level ownership/access checks.
  */
 export async function getConversationHistory(courseId: string) {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) throw new Error("Unauthorized");
 
   const validated = studyBuddyCourseQuerySchema.parse({ courseId });
@@ -44,7 +44,7 @@ export async function getConversationHistory(courseId: string) {
  * Clear all conversation history for a course.
  */
 export async function clearConversationHistory(courseId: string) {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) throw new Error("Unauthorized");
 
   const validated = studyBuddyCourseQuerySchema.parse({ courseId });
@@ -79,7 +79,7 @@ export async function askStudyBuddy(
   courseId?: string,
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getUserId();
     if (!userId) throw new Error("Unauthorized");
 
 

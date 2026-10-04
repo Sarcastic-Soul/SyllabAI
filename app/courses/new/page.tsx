@@ -1,5 +1,7 @@
 import CourseForm from "@/components/course/CourseForm";
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth/session";
+import { resolvePlan } from "@/lib/billing/plan";
+import { FREE_COURSE_LIMIT } from "@/lib/billing/config";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -7,29 +9,27 @@ import Link from "next/link";
 import { Lock } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/ui/button";
 
-const FREE_COURSE_LIMIT = 2; // Set your free tier limit here
-
 const NewCoursePage = async () => {
-    const { userId, has } = await auth();
+    const userId = await getUserId();
 
     if (!userId) {
         return null; // Or redirect to sign-in
     }
 
-    // 1. Check if the user has a pro plan via Clerk
-    const isPro = has({ plan: "pro" }); // Ensure "pro" matches the slug in your Clerk dashboard
-
-    // 2. Fetch the number of courses they have generated from your database
+    // 1. Plan and number of generated courses, from our database
     const userRecord = await db.query.users.findFirst({
         where: eq(users.id, userId),
         columns: {
             coursesGenerated: true,
+            subscriptionPlan: true,
+            proUntil: true,
         },
     });
 
+    const { isPro } = resolvePlan(userRecord);
     const coursesCount = userRecord?.coursesGenerated || 0;
 
-    // 3. Determine if they are locked out
+    // 2. Determine if they are locked out
     const hasReachedLimit = !isPro && coursesCount >= FREE_COURSE_LIMIT;
 
     return (

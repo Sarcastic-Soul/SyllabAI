@@ -30,7 +30,7 @@ export default function Hero() {
           <RevealItem hero className="mt-8">
             <StartCta withSignIn />
             <p className="mt-4 text-sm text-muted-foreground">
-              The free plan holds 2 courses at a time.
+              The free plan holds 3 courses at a time.
             </p>
           </RevealItem>
         </div>

@@ -39,8 +39,8 @@ jobs:
 
       - name: Build Next.js project
         env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_dummy
-          CLERK_SECRET_KEY: sk_test_dummy
+          NEON_AUTH_BASE_URL: https://example.neonauth.dev/neondb/auth
+          NEON_AUTH_COOKIE_SECRET: dummy_cookie_secret_at_least_32_chars_long
           DATABASE_URL: postgresql://user:pass@localhost:5432/db?sslmode=require
           GEMINI_API_KEY: dummy_key
         run: pnpm build

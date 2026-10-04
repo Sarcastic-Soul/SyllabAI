@@ -1,4 +1,5 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getSessionUser } from "@/lib/auth/session";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { redirect } from "next/navigation";
 import {
   getAdminPlatformStats,
@@ -9,17 +10,10 @@ import AdminDashboardClient from "@/components/admin/AdminDashboardClient";
 import { ShieldCheck, BookOpen, ChartBar } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
-const ADMIN_EMAIL = "anishisbusy@gmail.com";
-
 export default async function AdminDashboardPage() {
-  const { userId } = await auth();
-  const user = await currentUser();
+  const user = await getSessionUser();
 
-  const primaryEmail =
-    user?.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
-      ?.emailAddress || user?.emailAddresses[0]?.emailAddress;
-
-  if (!userId || !primaryEmail || primaryEmail.toLowerCase() !== ADMIN_EMAIL) {
+  if (!user || !isAdminEmail(user.email)) {
     redirect("/dashboard");
   }
 

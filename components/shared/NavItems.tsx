@@ -2,16 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Show, useUser } from "@clerk/nextjs";
+import { authClient } from "@/lib/auth/client";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { cn } from "@/lib/utils";
 
 const NavItems = () => {
-  const { user } = useUser();
+  const { data: session } = authClient.useSession();
   const pathname = usePathname();
-  const userEmail =
-    user?.primaryEmailAddress?.emailAddress ||
-    user?.emailAddresses?.[0]?.emailAddress;
-  const isAdmin = userEmail?.toLowerCase() === "anishisbusy@gmail.com";
+  const isAdmin = isAdminEmail(session?.user.email);
 
   const items = [
     { href: "/dashboard", label: "Courses" },
@@ -33,7 +31,6 @@ const NavItems = () => {
 
   return (
     <ul className="flex flex-col text-sm font-medium md:flex-row md:items-center md:gap-1">
-      <Show when="signed-in">
         {items.map((item) => {
           const active = isActive(item.href);
           return (
@@ -53,7 +50,6 @@ const NavItems = () => {
             </li>
           );
         })}
-      </Show>
     </ul>
   );
 };

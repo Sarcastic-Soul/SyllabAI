@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { chapters, users, flashcards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth/session";
 import {
     chapterActionSchema,
     toggleBookmarkSchema,
@@ -36,7 +36,7 @@ async function verifyChapterOwnership(chapterId: string, userId: string) {
 
 export async function markChapterComplete(chapterId: string, courseId: string) {
     try {
-        const { userId } = await auth();
+        const userId = await getUserId();
         if (!userId) throw new Error("Unauthorized");
 
         const validated = chapterActionSchema.parse({ chapterId, courseId });
@@ -103,7 +103,7 @@ export async function toggleChapterBookmark(
     currentStatus: boolean,
 ) {
     try {
-        const { userId } = await auth();
+        const userId = await getUserId();
         if (!userId) throw new Error("Unauthorized");
 
         const validated = toggleBookmarkSchema.parse({
@@ -132,7 +132,7 @@ export async function generateChapterLesson(
     chapterTitle: string,
 ) {
     try {
-        const { userId } = await auth();
+        const userId = await getUserId();
         if (!userId) throw new Error("Unauthorized");
 
 
@@ -206,7 +206,7 @@ export async function generateChapterMermaid(
     chapterTitle: string,
 ) {
     try {
-        const { userId } = await auth();
+        const userId = await getUserId();
         if (!userId) throw new Error("Unauthorized");
 
 
@@ -256,7 +256,7 @@ export async function generateChapterMermaid(
 
 export async function generateChapterFlashcards(chapterId: string) {
     try {
-        const { userId } = await auth();
+        const userId = await getUserId();
         if (!userId) throw new Error("Unauthorized");
 
 

@@ -2,12 +2,12 @@
 
 import { db } from "@/lib/db";
 import { users, courses, chapters, quizzes } from "@/lib/db/schema";
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth/session";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 export async function seedMockData() {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) throw new Error("Unauthorized");
 
   // 1. Generate Realistic Mock Activity Map & update User Stats

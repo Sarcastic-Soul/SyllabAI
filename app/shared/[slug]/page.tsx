@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
-import { Show, SignUpButton } from "@clerk/nextjs";
+import { SignedOut } from "@neondatabase/auth-ui";
 import { Metadata } from "next";
 
 interface SharedCoursePageProps {
@@ -53,7 +53,7 @@ const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {
 
     return (
         <main className="mx-auto w-full max-w-3xl px-4 pt-6 pb-16 sm:px-6 sm:pt-8">
-            <Show when="signed-out">
+            <SignedOut>
                 <div className="mb-8 flex items-center justify-between gap-4 border-b border-border pb-4">
                     <Link
                         href="/"
@@ -62,13 +62,11 @@ const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {
                     >
                         <Image src="/logo.svg" alt="SyllabAI" width={80} height={50} style={{ width: "auto" }} />
                     </Link>
-                    <SignUpButton>
-                        <Button variant="outline" size="sm">
-                            Sign up free
-                        </Button>
-                    </SignUpButton>
+                    <Button asChild variant="outline" size="sm">
+                        <Link href="/auth/sign-up">Sign up free</Link>
+                    </Button>
                 </div>
-            </Show>
+            </SignedOut>
 
             <header className="space-y-3">
                 <p className="font-mono text-xs text-muted-foreground">
@@ -132,7 +130,7 @@ const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {
                 )}
             </section>
 
-            <Show when="signed-out">
+            <SignedOut>
                 <section className="mt-12 flex flex-col gap-5 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
                     <div className="max-w-[50ch]">
                         <h2 className="text-xl font-semibold">
@@ -144,13 +142,11 @@ const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {
                             your own.
                         </p>
                     </div>
-                    <SignUpButton>
-                        <Button size="lg" className="shrink-0">
-                            Sign up free
-                        </Button>
-                    </SignUpButton>
+                    <Button asChild size="lg" className="shrink-0">
+                        <Link href="/auth/sign-up">Sign up free</Link>
+                    </Button>
                 </section>
-            </Show>
+            </SignedOut>
         </main>
     );
 };

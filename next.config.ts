@@ -4,14 +4,16 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  images: {
-    remotePatterns: [{ hostname: "img.clerk.com" }],
-  },
   serverExternalPackages: ["unpdf"],
+  async redirects() {
+    return [
+      { source: "/sign-in", destination: "/auth/sign-in", permanent: false },
+      { source: "/sign-up", destination: "/auth/sign-up", permanent: false },
+    ];
+  },
   experimental: {
     optimizePackageImports: [
       "@phosphor-icons/react",
-      "@clerk/nextjs",
       "@icons-pack/react-simple-icons",
       "motion",
       "recharts",

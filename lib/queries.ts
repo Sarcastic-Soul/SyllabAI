@@ -74,7 +74,7 @@ export const getUserCourses = cache(async (userId: string) => {
 });
 
 /**
- * Fetch user record by Clerk ID.
+ * Fetch user record by auth user ID.
  */
 export const getUserDb = cache(async (userId: string) => {
     if (!userId) return null;

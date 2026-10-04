@@ -1,7 +1,6 @@
-"use client";
-
-import { PricingTable } from "@clerk/nextjs";
-import { container } from "./styles";
+import Link from "next/link";
+import PlanCards from "@/components/billing/PlanCards";
+import { btnLg, btnOutline, btnPrimary, container } from "./styles";
 
 export default function PricingSection() {
   return (
@@ -11,20 +10,23 @@ export default function PricingSection() {
           Pricing
         </h2>
         <p className="mt-4 max-w-xl leading-relaxed text-muted-foreground">
-          Basic is free and holds 2 courses at a time; delete one to make room
+          Basic is free and holds 3 courses at a time; delete one to make room
           for another. Pro removes the course limit.
         </p>
 
-        <div className="mt-10 max-w-4xl [&_.cl-pricingTableCard]:border [&_.cl-pricingTableCard]:border-solid [&_.cl-pricingTableCard]:border-foreground/15 [&_.cl-pricingTableCard]:shadow-none!">
-          <PricingTable
-            collapseFeatures={false}
-            appearance={{
-              variables: {
-                colorPrimary: "#e8471f",
-                borderRadius: "0.5rem",
-                fontFamily: "var(--font-geist), ui-sans-serif, sans-serif",
-              },
-            }}
+        <div className="mt-10 max-w-4xl">
+          <PlanCards
+            basicAction={
+              <Link href="/auth/sign-up" className={`${btnOutline} ${btnLg} w-full sm:w-auto`}>
+                Start free
+              </Link>
+            }
+            // /subscription sends signed-out visitors to sign-in first
+            proAction={
+              <Link href="/subscription" className={`${btnPrimary} ${btnLg} w-full sm:w-auto`}>
+                Get Pro
+              </Link>
+            }
           />
         </div>
       </div>

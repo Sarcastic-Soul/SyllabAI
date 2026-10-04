@@ -18,8 +18,14 @@ const stack = [
       "Writes outlines, lessons, quizzes and flashcards. Every response is checked against a schema before it is saved, and a lighter model takes over when the daily quota runs low.",
   },
   {
-    term: "Clerk",
-    detail: "Sign-in, sessions and the plan check behind the course limit.",
+    term: "Neon Auth",
+    detail:
+      "Sign-in with Google or email and password. Users and sessions live in the same Postgres database as the courses.",
+  },
+  {
+    term: "Razorpay",
+    detail:
+      "Pro is a one-time payment. The server checks the payment signature and a webhook before it unlocks the plan.",
   },
 ];
 
