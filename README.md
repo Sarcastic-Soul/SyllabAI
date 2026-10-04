@@ -18,16 +18,21 @@ Type what you want to learn, or upload your notes. SyllabAI lays out the chapter
 ![Gemini](https://img.shields.io/badge/Google_Gemini-3.8_Flash-8e75b2?logo=googlegemini&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[Live site](https://syllabai-edu.vercel.app) · [Features](#features) · [How it works](#how-it-works) · [Run it locally](#run-it-locally)
+[Live site](https://syllabai-edu.vercel.app) · [Demo](#demo) · [Features](#features) · [How it works](#how-it-works) · [Run it locally](#run-it-locally)
 
 </div>
 
 ![SyllabAI landing page](docs/screenshots/landing.png)
 
-<!-- DEMO VIDEO: goes here -->
+## Demo
+
+An 80-second walkthrough: new course from a topic, lesson, quiz, diagram, flashcards and the study buddy.
+
+https://github.com/user-attachments/assets/b3953ac3-ce85-43d5-873e-b271aee02bf7
 
 ## Contents
 
+- [Demo](#demo)
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [How it works](#how-it-works)
