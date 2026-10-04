@@ -19,6 +19,7 @@ import {
   GenerationOutputError,
   type ModelCall,
 } from "@/lib/ai/generate";
+import { MODEL_BUSY_MESSAGE, RATE_LIMIT_MESSAGE, toUserFacingError } from "@/lib/ai/errors";
 import { quizSchema, flashcardsSchema, syllabusSchema } from "@/lib/ai/schemas";
 import { logGeneration } from "@/lib/ai/log";
 import { selectSmartModel } from "@/lib/quota";
@@ -202,6 +203,45 @@ describe("generate", () => {
     );
   });
 
+  it("switches to the fallback model once when the main model is busy", async () => {
+    const busy = new Error('{"error":{"code":503,"message":"high demand","status":"UNAVAILABLE"}}');
+    const call: ModelCall = vi
+      .fn()
+      .mockRejectedValueOnce(busy)
+      .mockResolvedValue({ text: "# Lesson", inputTokens: 10, outputTokens: 5 });
+
+    const result = await generate({ step: "lesson", prompt: "p", call });
+
+    expect(result).toMatchObject({ data: "# Lesson", modelName: "gemini-3.5-flash-lite", isFallback: true });
+    expect(logGeneration).toHaveBeenCalledTimes(2);
+    expect(logGeneration).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ model: "gemini-3.8-flash", success: false, errorType: "api_error" })
+    );
+    expect(logGeneration).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ model: "gemini-3.5-flash-lite", success: true, inputTokens: 10 })
+    );
+  });
+
+  it("throws a plain message when every model is busy", async () => {
+    const busy = new Error('{"error":{"code":503,"message":"high demand","status":"UNAVAILABLE"}}');
+    const call: ModelCall = vi.fn().mockRejectedValue(busy);
+
+    await expect(generate({ step: "lesson", prompt: "p", call })).rejects.toThrow(MODEL_BUSY_MESSAGE);
+    expect(call).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not switch models when the caller pinned one", async () => {
+    const busy = new Error('{"error":{"code":503,"message":"high demand","status":"UNAVAILABLE"}}');
+    const call: ModelCall = vi.fn().mockRejectedValue(busy);
+
+    await expect(
+      generate({ step: "lesson", prompt: "p", model: "gemini-3.8-flash", call })
+    ).rejects.toThrow(MODEL_BUSY_MESSAGE);
+    expect(call).toHaveBeenCalledTimes(1);
+  });
+
   it("returns plain text when no schema is given, without retrying", async () => {
     const call = replies("# Lesson\nSome text");
     const result = await generate({ step: "lesson", prompt: "p", call });
@@ -245,5 +285,19 @@ describe("toGeminiJsonSchema", () => {
     const text = JSON.stringify(schema);
     expect(text).not.toContain("$schema");
     expect(text).not.toContain("minLength");
+  });
+});
+
+describe("toUserFacingError", () => {
+  it("maps rate limit errors to a plain message and keeps the cause", () => {
+    const raw = new Error('{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}');
+    const mapped = toUserFacingError(raw);
+    expect(mapped.message).toBe(RATE_LIMIT_MESSAGE);
+    expect(mapped.cause).toBe(raw);
+  });
+
+  it("leaves readable errors unchanged", () => {
+    const raw = new Error("DAILY_AI_QUOTA_EXHAUSTED: try again tomorrow");
+    expect(toUserFacingError(raw)).toBe(raw);
   });
 });

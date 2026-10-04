@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { toUserFacingError } from "@/lib/ai/errors";
 import { checkGenerationAccess } from "@/lib/api/generationAccess";
 import { generatePdfCourse, type CourseDifficulty } from "@/lib/generator/courseGenerator";
 
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("Error in /api/generate/pdf:", error);
     return NextResponse.json(
-      { error: (error instanceof Error && error.message) || "Failed to process document upload" },
+      { error: toUserFacingError(error).message || "Failed to process document upload" },
       { status: 400 }
     );
   }

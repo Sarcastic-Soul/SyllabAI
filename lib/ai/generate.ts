@@ -5,6 +5,7 @@ import {
   type GeminiModelName,
 } from "@/lib/quota";
 import { withRetry } from "@/lib/utils/retry";
+import { isModelBusyError, toUserFacingError } from "@/lib/ai/errors";
 import {
   logGeneration,
   type GenerationErrorType,
@@ -222,6 +223,8 @@ export interface GenerateResult<T> {
   repaired: boolean;
 }
 
+const FALLBACK_MODEL: GeminiModelName = "gemini-3.5-flash-lite";
+
 /** Picks a model once so several calls can share it via `model`. */
 export const pickModel = selectSmartModel;
 
@@ -263,13 +266,16 @@ export async function generate<T>(
       repaired,
     });
 
-  try {
-    if (!options.model) {
-      const selection = await selectSmartModel(modelName);
-      modelName = selection.modelName;
-      isFallback = selection.isFallback;
+  const errorTypeOf = (err: unknown): GenerationErrorType => {
+    if (err instanceof GenerationOutputError) return err.errorType;
+    if (err instanceof Error && err.message.startsWith("DAILY_AI_QUOTA_EXHAUSTED")) {
+      return "quota_exhausted";
     }
+    return "api_error";
+  };
 
+  // One full attempt on the current model: call, validate, repair, log the success row.
+  const attempt = async (): Promise<GenerateResult<T | string>> => {
     const rawCall =
       options.call ?? createGeminiCall(modelName, schema ? toGeminiJsonSchema(schema) : undefined);
 
@@ -298,14 +304,31 @@ export async function generate<T>(
 
     await finish(true, result.firstErrorType, result.repaired);
     return { data: result.data, modelName, isFallback, repaired: result.repaired };
-  } catch (err) {
-    let errorType: GenerationErrorType = "api_error";
-    if (err instanceof GenerationOutputError) {
-      errorType = err.errorType;
-    } else if (err instanceof Error && err.message.startsWith("DAILY_AI_QUOTA_EXHAUSTED")) {
-      errorType = "quota_exhausted";
+  };
+
+  try {
+    if (!options.model) {
+      const selection = await selectSmartModel(modelName);
+      modelName = selection.modelName;
+      isFallback = selection.isFallback;
     }
-    await finish(false, errorType, false);
-    throw err;
+
+    try {
+      return await attempt();
+    } catch (err) {
+      // The main model is overloaded: try the fallback model once, unless the caller pinned a model.
+      const canSwitch = !options.model && modelName !== FALLBACK_MODEL && isModelBusyError(err);
+      if (!canSwitch) throw err;
+
+      await finish(false, "api_error", false);
+      modelName = FALLBACK_MODEL;
+      isFallback = true;
+      inputTokens = null;
+      outputTokens = null;
+      return await attempt();
+    }
+  } catch (err) {
+    await finish(false, errorTypeOf(err), false);
+    throw toUserFacingError(err);
   }
 }
