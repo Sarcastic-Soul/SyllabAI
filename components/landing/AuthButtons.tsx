@@ -1,47 +1,54 @@
-"use client";
-
 import Link from "next/link";
-import { SignedIn, SignedOut } from "@neondatabase/auth-ui";
+import { getUserId } from "@/lib/auth/session";
 import { btnLg, btnOutline, btnPrimary, btnQuiet, btnSm } from "./styles";
 
-export function HeaderAuth() {
+// Both read the session on the server, so the buttons are in the first HTML
+// and do not pop in after the page loads.
+
+export async function HeaderAuth() {
+  const signedIn = Boolean(await getUserId());
+
   return (
     <div className="flex items-center gap-1 sm:gap-2">
-      <SignedOut>
-        <Link href="/auth/sign-in" className={`${btnQuiet} ${btnSm}`}>
-          Sign in
-        </Link>
-        <Link href="/auth/sign-up" className={`${btnPrimary} ${btnSm}`}>
-          Start a course
-        </Link>
-      </SignedOut>
-      <SignedIn>
+      {signedIn ? (
         <Link href="/dashboard" className={`${btnPrimary} ${btnSm}`}>
           Open dashboard
         </Link>
-      </SignedIn>
+      ) : (
+        <>
+          <Link href="/auth/sign-in" className={`${btnQuiet} ${btnSm}`}>
+            Sign in
+          </Link>
+          <Link href="/auth/sign-up" className={`${btnPrimary} ${btnSm}`}>
+            Start a course
+          </Link>
+        </>
+      )}
     </div>
   );
 }
 
-export function StartCta({ withSignIn = false }: { withSignIn?: boolean }) {
+export async function StartCta({ withSignIn = false }: { withSignIn?: boolean }) {
+  const signedIn = Boolean(await getUserId());
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <SignedOut>
-        <Link href="/auth/sign-up" className={`${btnPrimary} ${btnLg}`}>
-          Start a course
-        </Link>
-        {withSignIn && (
-          <Link href="/auth/sign-in" className={`${btnOutline} ${btnLg}`}>
-            Sign in
-          </Link>
-        )}
-      </SignedOut>
-      <SignedIn>
+      {signedIn ? (
         <Link href="/dashboard" className={`${btnPrimary} ${btnLg}`}>
           Open dashboard
         </Link>
-      </SignedIn>
+      ) : (
+        <>
+          <Link href="/auth/sign-up" className={`${btnPrimary} ${btnLg}`}>
+            Start a course
+          </Link>
+          {withSignIn && (
+            <Link href="/auth/sign-in" className={`${btnOutline} ${btnLg}`}>
+              Sign in
+            </Link>
+          )}
+        </>
+      )}
     </div>
   );
 }

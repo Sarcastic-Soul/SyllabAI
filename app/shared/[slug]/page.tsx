@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
-import { SignedOut } from "@neondatabase/auth-ui";
+import { getUserId } from "@/lib/auth/session";
 import { Metadata } from "next";
 
 interface SharedCoursePageProps {
@@ -51,9 +51,11 @@ const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {
 
     const totalChapters = course.chapters.length;
 
+    const signedOut = !(await getUserId());
+
     return (
         <main className="mx-auto w-full max-w-3xl px-4 pt-6 pb-16 sm:px-6 sm:pt-8">
-            <SignedOut>
+            {signedOut && (
                 <div className="mb-8 flex items-center justify-between gap-4 border-b border-border pb-4">
                     <Link
                         href="/"
@@ -66,7 +68,7 @@ const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {
                         <Link href="/auth/sign-up">Sign up free</Link>
                     </Button>
                 </div>
-            </SignedOut>
+            )}
 
             <header className="space-y-3">
                 <p className="font-mono text-xs text-muted-foreground">
@@ -130,7 +132,7 @@ const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {
                 )}
             </section>
 
-            <SignedOut>
+            {signedOut && (
                 <section className="mt-12 flex flex-col gap-5 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
                     <div className="max-w-[50ch]">
                         <h2 className="text-xl font-semibold">
@@ -146,7 +148,7 @@ const SharedCoursePage = async ({ params }: SharedCoursePageProps) => {
                         <Link href="/auth/sign-up">Sign up free</Link>
                     </Button>
                 </section>
-            </SignedOut>
+            )}
         </main>
     );
 };

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
-import { SignedOut } from "@neondatabase/auth-ui";
+import { getUserId } from "@/lib/auth/session";
 import MarkdownRenderer from "@/components/shared/MarkdownRenderer";
 import MermaidDiagram from "@/components/course/MermaidDiagram";
 
@@ -27,9 +27,11 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
     // Verify this chapter belongs to the shared course
     if (!chapter || chapter.courseId !== course.id) notFound();
 
+    const signedOut = !(await getUserId());
+
     return (
         <main className="mx-auto w-full max-w-[43rem] px-4 pt-6 pb-20 sm:px-6 sm:pt-8">
-            <SignedOut>
+            {signedOut && (
                 <div className="mb-8 flex items-center justify-between gap-4 border-b border-border pb-4">
                     <Link
                         href="/"
@@ -42,7 +44,7 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
                         <Link href="/auth/sign-up">Sign up free</Link>
                     </Button>
                 </div>
-            </SignedOut>
+            )}
 
             <Link
                 href={`/shared/${slug}`}
@@ -92,7 +94,7 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
             )}
 
             {/* Sign-up prompt stands in for the quiz and flashcards */}
-            <SignedOut>
+            {signedOut && (
                 <section className="mt-12 border-t border-border pt-8">
                     <h2 className="text-xl font-semibold">
                         Test yourself on this chapter
@@ -105,7 +107,7 @@ const SharedChapterPage = async ({ params }: SharedChapterPageProps) => {
                         <Link href="/auth/sign-up">Sign up free</Link>
                     </Button>
                 </section>
-            </SignedOut>
+            )}
         </main>
     );
 };
