@@ -1,12 +1,71 @@
+<div align="center">
+
+<img src="public/logo.svg" alt="SyllabAI logo" width="96" />
+
 # SyllabAI
 
-**SyllabAI** is an AI-powered educational platform that automatically generates structured courses, quizzes, cheat sheets, and flashcards from any topic string or uploaded document (`.pdf`, `.txt`, `.md`, `.csv`, `.json`).
+**One topic or one PDF in. A whole course out.**
 
-Built with Next.js 16 (App Router, Node.js Serverless runtime), Neon PostgreSQL (`pgvector`), and Google Gemini AI, SyllabAI turns a topic or an uploaded document into a course with lessons, quizzes, flashcards and a Study Buddy chat that can search the uploaded document. It also has SM-2 spaced repetition, public course sharing, and a per-call log of every AI request.
+Type what you want to learn, or upload your notes. SyllabAI lays out the chapters, writes each lesson, then quizzes you and brings the flashcards back just before you would forget them.
 
----
+[![CI](https://github.com/Sarcastic-Soul/SyllabAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Sarcastic-Soul/SyllabAI/actions/workflows/ci.yml)
+[![Live site](https://img.shields.io/badge/live-syllabai--edu.vercel.app-e8471f?logo=vercel&logoColor=white)](https://syllabai-edu.vercel.app)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-20232a?logo=react&logoColor=61dafb)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06b6d4?logo=tailwindcss&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/Neon_Postgres-pgvector-4169e1?logo=postgresql&logoColor=white)
+![Gemini](https://img.shields.io/badge/Google_Gemini-3.8_Flash-8e75b2?logo=googlegemini&logoColor=white)
 
-## 🏗️ System Architecture
+[Live site](https://syllabai-edu.vercel.app) · [Features](#features) · [How it works](#how-it-works) · [Run it locally](#run-it-locally)
+
+</div>
+
+![SyllabAI landing page](docs/screenshots/landing.png)
+
+<!-- DEMO VIDEO: goes here -->
+
+## Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [How it works](#how-it-works)
+- [Tech stack](#tech-stack)
+- [Run it locally](#run-it-locally)
+- [Scripts](#scripts)
+- [Project layout](#project-layout)
+- [Design decisions](#design-decisions)
+- [Limits](#limits)
+- [Retrieval eval](#retrieval-eval)
+
+## Features
+
+**Learning**
+
+- **Course from a topic or a file.** Type a topic, or upload `.pdf`, `.txt`, `.md`, `.csv` or `.json` (up to 4 MB and 100,000 characters).
+- **Lessons written when you open them.** You get the chapter list first; each lesson, quiz and flashcard set is generated when you reach it.
+- **Quizzes and flashcards.** Three questions per chapter, plus flashcards on an SM-2 spaced repetition schedule.
+- **Adaptive difficulty.** Quiz difficulty moves with your flashcard recall and past scores.
+- **Study buddy.** A chat that answers from the document you uploaded.
+- **Diagrams and cheat sheets.** Mermaid diagrams per chapter (with PNG download) and a one-page cheat sheet per course.
+- **Public sharing.** Any course can get a public link that works without an account.
+- **Progress.** Streaks, quiz average, bookmarks and an activity map.
+
+**Under the hood**
+
+- **Hybrid document search.** pgvector cosine similarity plus Postgres full-text search, merged with reciprocal rank fusion in one SQL statement.
+- **Checked AI output.** Gemini returns structured JSON, Zod checks it, and one retry with the error message fixes most bad replies.
+- **Model fallback.** Switches from `gemini-3.8-flash` to `gemini-3.5-flash-lite` when the daily quota runs low.
+- **Per-call log.** Every AI call writes a row (step, model, tokens, duration, result). The admin page shows calls, tokens and p50/p95 duration per step.
+- **Auth and payments.** Neon Auth (Google or email and password, with an email code at sign-up) and a one-time Pro pass through Razorpay.
+
+## Screenshots
+
+| Sign up | Pricing |
+| :---: | :---: |
+| ![Sign-up page](docs/screenshots/sign-up.png) | ![Pricing section](docs/screenshots/pricing.png) |
+
+## How it works
 
 ```
 Browser
@@ -16,134 +75,149 @@ Next.js route handler (Node.js runtime, maxDuration 300)
   │
   ├─ Google Gemini ........ gemini-3.8-flash / gemini-3.5-flash-lite (text and JSON)
   │                         gemini-embedding-001 (768-dim vectors)
-  └─ Neon PostgreSQL ...... courses, chapters, quizzes, flashcards, events,
-                            document_chunks (pgvector + full-text), generation_logs
+  ├─ Neon PostgreSQL ...... courses, chapters, quizzes, flashcards, payments,
+  │                         document_chunks (pgvector + full-text), generation_logs
+  ├─ Neon Auth ............ users and sessions, in the same database
+  └─ Razorpay ............. order, signature check, webhook
 ```
 
-All Gemini text and JSON calls go through one helper, `lib/ai/generate.ts`. Document search goes through `lib/retrieval.ts`.
+| Step | What happens |
+| --- | --- |
+| 1. Input | A topic, or a file that is split into chunks of about 1,000 characters (150 overlap) and embedded at 768 dimensions. |
+| 2. Outline | Gemini returns the chapter list as JSON; Zod checks it before anything is saved. |
+| 3. Lesson | Written when the chapter is opened. For uploaded files, the most relevant chunks are found with hybrid search and passed in. |
+| 4. Practice | Quiz and flashcards per chapter. Flashcard reviews follow SM-2 (`easeFactor`, `interval`, `nextReviewAt`). |
+| 5. Log | Each AI call is logged to `generation_logs`. The daily quota counter per model is a count over that table. |
 
----
+All Gemini text and JSON calls go through `lib/ai/generate.ts`. Document search goes through `lib/retrieval.ts`.
 
-## 🚀 Key Features
+### Plans
 
-- **Serverless**: runs on the Vercel Node.js runtime (`export const runtime = "nodejs"`, `maxDuration = 300`) with no background workers. Course generation is one request; the client shows a simulated progress animation while it waits.
-- **Unified Multi-Format Course Creation**: Generate full courses from a topic title or upload documents (`.pdf`, `.txt`, `.md`, `.csv`, `.json`) with a 4 MB upload limit (Vercel rejects request bodies over 4.5 MB) and a 100,000 character cap.
-- **Document search (RAG)**: uploaded documents are split into chunks of about 1,000 characters (150 overlap) and embedded with `gemini-embedding-001` at 768 dimensions (`outputDimensionality: 768`, L2-normalized, task types `RETRIEVAL_DOCUMENT` for chunks and `RETRIEVAL_QUERY` for questions). Lessons and Study Buddy answers use hybrid search: pgvector cosine similarity plus Postgres full-text search, merged with reciprocal rank fusion in one SQL statement (full-text matches count half as much as vector matches). On the small eval set in `eval/` hybrid and vector-only score about the same on recall@1 and MRR; hybrid found the answer in the top 5 for every question.
-- **Schema-checked AI output**: syllabus, quiz and flashcard generations ask Gemini for structured JSON, check the reply with Zod, and retry once with the error message if the reply is invalid.
-- **Per-call log**: every AI call writes a row to `generation_logs` (step, model, tokens, duration, success, error type, repaired). `/admin/stats` shows calls, tokens, p50/p95 duration and invalid-output rates per step. The daily quota counter per model is a count over the same table.
-- **Model fallback**: automatic fallback from `gemini-3.8-flash` to `gemini-3.5-flash-lite` when the daily quota counter gets close to its limit.
-- **Public Course Sharing**: Courses can be made public and shared via unique public links (`/shared/[id]`), accessible to guests without forcing authentication.
-- **Interactive Mermaid Diagrams & Export**: Chapter concepts feature automatically rendered Mermaid architecture/flowchart diagrams with top-right PNG download export controls.
-- **SM-2 Adaptive Difficulty Engine**: Analyzes spaced repetition recall metrics (`easeFactor`, `interval`, `nextReviewAt`) to compute retention mastery scores and automatically adjust quiz difficulty.
-- **Admin Analytics Dashboard**: Platform analytics viewable at `/admin` (Course directory) and `/admin/stats` (Recharts interactive charts for DAU, daily course volume, quiz score distributions, and system event telemetry).
-- **Structured JSON Logging**: Zero-overhead Pino logger writing structured JSON to `stdout` for automatic ingestion into the Vercel Dashboard.
+| | Basic | Pro |
+| --- | --- | --- |
+| Price | Free | ₹199 for 30 days |
+| Courses at a time | 3 | No limit |
+| Lessons, quizzes, flashcards, study buddy | Yes | Yes |
+| Renewal | – | One payment, nothing renews by itself |
 
----
+Razorpay runs in test mode on the live site, so no real money moves. Price and length are set in `lib/billing/config.ts`.
 
-## 🧠 Engineering Decisions & Tradeoffs
+## Tech stack
 
-### 1. Pure Serverless Execution over Persistent Worker Queues
-- **Decision**: Replaced BullMQ workers with synchronous serverless handlers running within Vercel's 300-second Node.js execution limit.
-- **Tradeoff**: Eliminates the need to host and maintain long-lived background server processes, enabling 100% free-tier deployment on Vercel.
+| Area | Tools |
+| --- | --- |
+| Framework | Next.js 16 (App Router), React 19, TypeScript 6 |
+| Styling | Tailwind CSS v4, Radix UI, Phosphor icons, Motion |
+| AI | Google Gemini via `@google/genai`, Zod for output checks, `unpdf` for PDF text |
+| Database | Neon PostgreSQL, `pgvector` (HNSW index), full-text search (`tsvector` + GIN index), Drizzle ORM |
+| Auth | Neon Auth (Managed Better Auth) |
+| Payments | Razorpay (HMAC SHA256 signature check plus webhook) |
+| Charts and logs | Recharts, Pino |
+| Tests and CI | Vitest, ESLint, GitHub Actions |
+| Hosting | Vercel |
 
-### 2. Transactional Rollback Safeguards on Partial Failures
-- **Decision**: Implemented automatic database deletion cleanup (`db.delete(courses)`) in generation handlers if errors occur mid-generation.
-- **Tradeoff**: Guarantees atomic database state and prevents half-created orphan courses from remaining in limbo if external API failures occur.
+## Run it locally
 
-### 3. One Request per Course, No Progress Stream
-- **Decision**: The generation routes do all the work in one request and return the new course id. An earlier SSE progress route was removed because nothing on the client read it.
-- **Tradeoff**: Less code and no progress state to store, but the progress bar on the client is an animation, not a report of real progress.
+You need Node.js 22.18 or newer, pnpm, a Neon project and a Gemini API key.
 
-### 4. No Redis
-- **Decision**: Upstash Redis was removed. It held a per-user rate limit, a syllabus cache, an embedding cache and the daily quota counters. The quota counters now come from a count over `generation_logs` in Postgres; the caches and the per-user rate limit are gone.
-- **Tradeoff**: One less service to run. Repeating the same topic calls Gemini again, and the only request limits left are the daily quota check and Gemini's own limits on the API key.
-
----
-
-## 🚧 Known Scaling Boundaries & Free-Tier Limits
-
-1. **Vercel Serverless Duration**: Handlers configured with `maxDuration = 300` (5 minutes max per invocation). Uploaded documents are capped at **4 MB** and **100,000 characters**.
-2. **Neon PostgreSQL Free Tier**: Capped at **0.5 GiB** storage with compute autosuspension.
-3. **Google Gemini Free Tier Limits**:
-   - **Gemini 3.8 Flash**: 5 RPM / 20 RPD *(Primary course generation)*.
-   - **Gemini 3.5 Flash Lite**: 15 RPM / 500 RPD *(Smart fallback, quizzes, flashcards, & Study Buddy chat)*.
-
----
-
-## 🛠️ Tech Stack
-
-- **Framework**: Next.js 16 (App Router, Node.js Serverless runtime), React 19, TailwindCSS v4, Radix UI
-- **AI & RAG**: Google Gemini via `@google/genai` (`gemini-3.8-flash`, `gemini-3.5-flash-lite`, `gemini-embedding-001`), Zod for output checks, `unpdf` for PDF text
-- **Database**: PostgreSQL (Neon), `pgvector` (HNSW index), full-text search (`tsvector` + GIN index), Drizzle ORM
-- **Analytics & Logging**: Pino (Structured JSON logging), Recharts (Interactive charts)
-- **Authentication**: Neon Auth (Managed Better Auth), Google and email/password
-- **Payments**: Razorpay (one-time Pro pass, signature check plus webhook)
-
----
-
-## 🚦 Quick Start
-
-### 1. Clone the repository
 ```bash
 git clone https://github.com/Sarcastic-Soul/SyllabAI.git
 cd SyllabAI
-```
-
-### 2. Install dependencies
-```bash
 pnpm install
-```
-
-### 3. Set up environment variables
-Copy `.env.example` to `.env.local` and fill in your credentials:
-```bash
 cp .env.example .env.local
 ```
-Ensure your `.env.local` contains:
-- `NEON_AUTH_BASE_URL` & `NEON_AUTH_COOKIE_SECRET` (Neon console, Auth tab)
-- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` & `RAZORPAY_WEBHOOK_SECRET`
-- `DATABASE_URL` (Neon PostgreSQL connection string)
-- `GEMINI_API_KEY` (Google Gemini API key)
 
-### 4. Set Up the Database
+Fill in `.env.local`:
+
+| Variable | Where to get it |
+| --- | --- |
+| `DATABASE_URL` | Neon console, connection string |
+| `GEMINI_API_KEY` | Google AI Studio |
+| `NEON_AUTH_BASE_URL` | Neon console, Auth tab, Configuration |
+| `NEON_AUTH_COOKIE_SECRET` | Any random string of 32+ characters: `openssl rand -base64 32` |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay dashboard, API Keys (test mode keys start with `rzp_test_`) |
+| `RAZORPAY_WEBHOOK_SECRET` | A secret you choose when adding the webhook in the Razorpay dashboard |
+
+Set up the database, then start the app:
+
 ```bash
 node enable-vector.ts    # new database only: turns on the pgvector extension
 pnpm run db:migrate      # applies the SQL files in lib/db/migrations
-```
-If your database was first set up with `pnpm run db:push`, keep using `db:push`, or run the newest file in `lib/db/migrations` by hand (it only uses `IF NOT EXISTS` statements).
-
-Documents uploaded before the move to `gemini-embedding-001` have no usable vectors (the old embedding models were shut down). Upload them again to make them searchable.
-
-### 5. Start Development Server
-```bash
 pnpm dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
----
+Open [http://localhost:3000](http://localhost:3000).
 
-## 📜 Project Scripts
+In the Neon console (Auth tab), turn on email sign-up with "Verify at Sign-up" set to verification code, add Google, and allow localhost.
 
-- `pnpm dev` – Starts development server with Turbopack.
-- `pnpm build` – Builds production bundle.
-- `pnpm start` – Starts production server.
-- `pnpm test` – Runs unit tests using Vitest.
-- `pnpm typecheck` / `pnpm lint` – TypeScript and ESLint checks.
-- `pnpm run db:generate` / `pnpm run db:migrate` – Writes and applies SQL migrations.
-- `pnpm eval` – Runs the retrieval eval (see below).
-- `pnpm run db:push` – Pushes schema changes directly to PostgreSQL.
+## Scripts
 
----
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Development server with Turbopack |
+| `pnpm build` / `pnpm start` | Production build and server |
+| `pnpm test` | Unit tests (Vitest) |
+| `pnpm typecheck` / `pnpm lint` | TypeScript and ESLint checks |
+| `pnpm run db:generate` / `pnpm run db:migrate` | Write and apply SQL migrations |
+| `pnpm run db:push` | Push the schema straight to the database |
+| `pnpm eval` | Retrieval eval (see below) |
 
-## Retrieval Eval
+## Project layout
 
-`eval/` holds a small test of document search: four sample documents (`eval/docs`), 72 questions with the text that a correct chunk must contain (`eval/questions.json`), and a runner (`eval/run.ts`).
+```
+app/                 pages and API routes (auth, dashboard, courses, admin, razorpay)
+components/          UI, grouped by area (landing, course, dashboard, billing, admin)
+lib/ai/              Gemini calls, embeddings, per-call log
+lib/auth/            Neon Auth server and client setup, session helper
+lib/billing/         plan limits, Razorpay calls and signature checks
+lib/db/              Drizzle schema and SQL migrations
+lib/generator/       course outline generation
+lib/actions/         server actions: lessons, quizzes, flashcards, study buddy
+lib/retrieval.ts     hybrid document search
+eval/                retrieval eval: documents, questions, runner, results
+proxy.ts             route guard (Next.js 16 name for middleware)
+```
+
+## Design decisions
+
+| Decision | Why | Cost |
+| --- | --- | --- |
+| One request per course, no worker queue | Runs on Vercel's free tier with no background process to host | Bound by the 300-second function limit; the progress bar is an animation, not real progress |
+| Clean up on failure | If generation fails halfway, the half-made course is deleted | A retry starts from scratch |
+| No Redis | One less service; the daily quota is a count over `generation_logs` | No caches, so the same topic calls Gemini again |
+| Hybrid search over vector-only | Full-text catches exact terms that embeddings miss | On the eval set both score about the same on recall@1 and MRR; hybrid found the answer in the top 5 for every question |
+| One-time Pro pass, not a subscription | No renewal logic or stored cards; a `pro_until` date is enough | Users pay again by hand every 30 days |
+
+## Limits
+
+- **Vercel:** 300 seconds per request; uploads capped at 4 MB (Vercel rejects bodies over 4.5 MB).
+- **Neon free tier:** 0.5 GiB storage, compute sleeps when idle.
+- **Gemini free tier:** `gemini-3.8-flash` 5 requests per minute and 20 per day; `gemini-3.5-flash-lite` 15 per minute and 500 per day.
+- **Email:** verification codes come from Neon's shared sender, which is rate-limited.
+
+## Retrieval eval
+
+`eval/` holds a small test of document search: four sample documents, 72 questions with the text a correct chunk must contain, and a runner.
 
 ```bash
 EVAL_DATABASE_URL=postgres://... pnpm eval
 ```
 
-- `EVAL_DATABASE_URL` is required. Best is a separate database or Neon branch with pgvector and the migrations applied. With only one database, pass `--allow-app-db` and point it at the same URL: `EVAL_DATABASE_URL="$DATABASE_URL" pnpm eval --allow-app-db`. The script writes temporary rows and deletes them at the end.
-- It creates temporary courses, chunks the documents at 4,000 and 1,000 characters, embeds them with the app's embedding function, runs every question through `lib/retrieval.ts` in `vector` and `hybrid` mode, and deletes its rows when done.
-- It writes recall@1, recall@5 and MRR to `eval/RESULTS.md`. The checked-in file is from a real run on 2026-10-03.
-- It needs `GEMINI_API_KEY` and makes a handful of batched embedding requests. `pnpm eval --help` lists the options.
+| Chunk size | Mode | recall@1 | recall@5 | MRR |
+| --- | --- | --- | --- | --- |
+| 4,000 | vector | 77.8% | 100% | 0.885 |
+| 4,000 | hybrid | 79.2% | 100% | 0.889 |
+| 1,000 | vector | 79.2% | 97.2% | 0.873 |
+| 1,000 | hybrid | 76.4% | 100% | 0.869 |
+
+- `EVAL_DATABASE_URL` is required. Best is a separate database or Neon branch with pgvector and the migrations applied. With only one database, run `EVAL_DATABASE_URL="$DATABASE_URL" pnpm eval --allow-app-db`.
+- The script writes temporary courses and chunks, runs every question through `lib/retrieval.ts` in both modes, then deletes its rows.
+- Full results are in [`eval/RESULTS.md`](eval/RESULTS.md), from a real run on 2026-10-03. `pnpm eval --help` lists the options.
+
+---
+
+<div align="center">
+
+A student portfolio project by [Sarcastic-Soul](https://github.com/Sarcastic-Soul).
+
+</div>
