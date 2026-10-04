@@ -3,8 +3,8 @@ import { getUserId } from "@/lib/auth/session";
 import { resolvePlan } from "@/lib/billing/plan";
 import { FREE_COURSE_LIMIT } from "@/lib/billing/config";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { courses, users } from "@/lib/db/schema";
+import { count, eq } from "drizzle-orm";
 import Link from "next/link";
 import { Lock } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/ui/button";
@@ -16,18 +16,21 @@ const NewCoursePage = async () => {
         return null; // Or redirect to sign-in
     }
 
-    // 1. Plan and number of generated courses, from our database
-    const userRecord = await db.query.users.findFirst({
-        where: eq(users.id, userId),
-        columns: {
-            coursesGenerated: true,
-            subscriptionPlan: true,
-            proUntil: true,
-        },
-    });
+    // 1. Plan and the number of courses the user has right now. Same count
+    // as the API check, so deleting a course frees a slot.
+    const [userRecord, [courseRow]] = await Promise.all([
+        db.query.users.findFirst({
+            where: eq(users.id, userId),
+            columns: {
+                subscriptionPlan: true,
+                proUntil: true,
+            },
+        }),
+        db.select({ value: count() }).from(courses).where(eq(courses.author, userId)),
+    ]);
 
     const { isPro } = resolvePlan(userRecord);
-    const coursesCount = userRecord?.coursesGenerated || 0;
+    const coursesCount = courseRow?.value ?? 0;
 
     // 2. Determine if they are locked out
     const hasReachedLimit = !isPro && coursesCount >= FREE_COURSE_LIMIT;
@@ -43,7 +46,7 @@ const NewCoursePage = async () => {
                 </p>
                 {!isPro && !hasReachedLimit && (
                     <p className="font-mono text-xs text-muted-foreground">
-                        {coursesCount}/{FREE_COURSE_LIMIT} free courses used
+                        {coursesCount}/{FREE_COURSE_LIMIT} free course slots used
                     </p>
                 )}
             </header>
@@ -53,13 +56,12 @@ const NewCoursePage = async () => {
                     <div className="py-4">
                         <Lock className="size-7 text-muted-foreground" aria-hidden />
                         <h2 className="mt-4 text-xl font-semibold">
-                            You have used your free courses
+                            Your {FREE_COURSE_LIMIT} free course slots are full
                         </h2>
                         <p className="mt-2 max-w-[50ch] leading-relaxed text-muted-foreground">
-                            You have generated {coursesCount} out of{" "}
-                            {FREE_COURSE_LIMIT} free courses. Pro has no course
-                            limit. Your existing courses stay available either
-                            way.
+                            The Basic plan holds {FREE_COURSE_LIMIT} courses at a
+                            time. Delete one from your dashboard to make room,
+                            or get Pro for no course limit.
                         </p>
                         <div className="mt-6 flex flex-wrap gap-3">
                             <Button asChild size="lg">
